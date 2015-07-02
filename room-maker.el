@@ -25,8 +25,8 @@
 ;; 创建room列表的方法
 (defun build-room (room-entity)
   "根据`text'创建room,并将room存入`rooms-alist'中"
-  (cl-multiple-value-bind (symbol description inventory equipment creature) room-entity
-	(cons symbol (make-instance Room :symbol symbol :description description :inventory inventory :equipment equipment :creature creature))))
+  (cl-multiple-value-bind (symbol description inventory creature) room-entity
+	(cons symbol (make-instance Room :symbol symbol :description description :inventory inventory :creature creature))))
 
 (defun build-rooms(room-config-file)
   "根据`room-config-file'中的配置信息创建各个room"
@@ -39,11 +39,23 @@
 
 (defun add-inventory-to-room (room inventory)
   ""
-  (push (room-inventory room) inventory))
+  (push inventory (room-inventory room)))
 
-(defun kill-creature-from-room (room inventory)
+(defun remove-creature-from-room (room inventory)
   ""
   (setf (room-creature room) (remove inventory (room-creature room))))
+
+(defun add-creature-to-room (room creature)
+  ""
+  (push creature (room-creature room)))
+
+(defun inventory-exist-in-room-p (room inventory)
+  ""
+  (member inventory (room-inventory room)))
+
+(defun creature-exist-in-room-p (room creature)
+  ""
+  (member creature (room-creature room)))
 ;; 将各room组装成地图的方法
 (defvar room-map nil
   "room的地图")
