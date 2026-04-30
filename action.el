@@ -3,7 +3,6 @@
 (defvar tg-valid-actions ()
   "允许执行的命令")
 
-(add-to-list 'load-path "~/myLisp/Text-Game-Maker")
 (require 'room-maker)
 (require 'inventory-maker)
 ;; action functions
