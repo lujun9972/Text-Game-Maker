@@ -100,7 +100,7 @@
   "使用'wear 物品'装备自己随身携带的equipment"
   (cond ((stringp equipment)
 		 (setq equipment (intern equipment))))
-  (unless (equipment-exist-in-creature-p myself equipment)
+  (unless (inventory-exist-in-creature-p myself equipment)
 	(throw 'exception (format "未携带%s" equipment)))
   (unless (inventory-wearable-p equipment)
 	(throw 'exception (format "%s不可使用" equipment)))

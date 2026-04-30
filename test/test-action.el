@@ -340,7 +340,7 @@
            (inv (make-instance 'Inventory :symbol 'armor :description "Steel armor"
                                :type '(wearable) :effects '((def . 5))))
            (cr (make-instance 'Creature :symbol 'hero :description "The hero"
-                              :attr '((hp . 100)) :inventory '(armor) :equipment '(armor))))
+                              :attr '((hp . 100)) :inventory '(armor))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
       (setq currect-room room)
@@ -349,8 +349,7 @@
       (setq myself cr)
       (setq display-fn #'ignore)
       (tg-wear 'armor)
-      ;; After fix: remove-inventory-from-creature removes from inventory,
-      ;; add-equipment-to-creature adds to equipment (both operate on correct creature)
+      (should-not (inventory-exist-in-creature-p cr 'armor))
       (should (equipment-exist-in-creature-p cr 'armor)))))
 
 (ert-deftest test-tg-wear-not-carried ()
@@ -378,7 +377,7 @@
            (inv (make-instance 'Inventory :symbol 'potion :description "A potion"
                                :type '(usable) :effects '((hp . 10))))
            (cr (make-instance 'Creature :symbol 'hero :description "The hero"
-                              :equipment '(potion))))
+                              :inventory '(potion))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
       (setq currect-room room)
