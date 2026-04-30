@@ -153,5 +153,5 @@ bash run-tests.sh
 + [ ] 为tg-mode添加eldoc支持
 + [ ] tg-mode的prompt中显示当前的ROOM symbal
 + [ ] action中的的attrack还未完成
-+ [ ] action中的wear还未完成
++ [X] action中的wear还未完成
 + [ ] 提供辅助程序生成room,map,inventory,creature的配置文件
