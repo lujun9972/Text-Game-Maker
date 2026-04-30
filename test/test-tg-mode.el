@@ -130,4 +130,75 @@
       (let ((output (catch 'exception (tg-parse 1))))
         (should-not (stringp output))))))
 
+;; --- tg-eldoc-function ---
+
+(ert-deftest test-tg-eldoc-exact-command ()
+  "tg-eldoc-function should return docstring for exact command match."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-help))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">help")
+      (goto-char (point-max))
+      (should (string= (tg-eldoc-function)
+                       (documentation 'tg-help))))))
+
+(ert-deftest test-tg-eldoc-prefix-match ()
+  "tg-eldoc-function should return docstring for unique prefix match."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-help))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">he")
+      (goto-char (point-max))
+      (should (string= (tg-eldoc-function)
+                       (documentation 'tg-help))))))
+
+(ert-deftest test-tg-eldoc-ambiguous-prefix ()
+  "tg-eldoc-function should return nil for ambiguous prefix."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-help))
+    ;; We need to manually add a second action starting with "he"
+    ;; tg-defaction adds to tg-valid-actions, but we can just set the list
+    (setq tg-valid-actions '(tg-help tg-hello))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">he")
+      (goto-char (point-max))
+      (should-not (tg-eldoc-function)))))
+
+(ert-deftest test-tg-eldoc-no-match ()
+  "tg-eldoc-function should return nil for no match."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-help))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">xyz")
+      (goto-char (point-max))
+      (should-not (tg-eldoc-function)))))
+
+(ert-deftest test-tg-eldoc-no-prompt ()
+  "tg-eldoc-function should return nil when no prompt on line."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-help))
+    (with-temp-buffer
+      (tg-mode)
+      (insert "hello world")
+      (goto-char (point-max))
+      (should-not (tg-eldoc-function)))))
+
+(ert-deftest test-tg-eldoc-room-prompt ()
+  "tg-eldoc-function should work with [room]> prompt format."
+  (test-with-globals-saved (tg-valid-actions current-room rooms-alist room-map)
+    (setq tg-valid-actions '(tg-help))
+    (setq current-room (make-Room :symbol 'living-room :description "A room"))
+    (setq rooms-alist (list (cons 'living-room current-room)))
+    (setq room-map '((living-room)))
+    (with-temp-buffer
+      (tg-mode)
+      (insert "[living-room]>help")
+      (goto-char (point-max))
+      (should (string= (tg-eldoc-function)
+                       (documentation 'tg-help))))))
+
 (provide 'test-tg-mode)

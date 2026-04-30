@@ -1,5 +1,7 @@
 ;;; tg-mode.el --- Major mode for Text-Game-Maker  -*- lexical-binding: t; -*-
 
+(require 'action)
+
 (defvar tg-over-p nil
   "游戏是否结束")
 
@@ -25,6 +27,35 @@
   (set-window-start (selected-window) (point))
   (end-of-buffer))
 
+(defun tg-eldoc-function ()
+  "Eldoc function for tg-mode. Show docstring for matching command."
+  (let* ((line-end (line-end-position))
+         (prompt-pos (save-excursion
+                       (beginning-of-line)
+                       (search-forward ">" line-end t))))
+    (when (and prompt-pos (<= (point) line-end))
+      (let* ((input (buffer-substring-no-properties prompt-pos (point)))
+             (input (string-trim input))
+             (candidates (mapcar (lambda (sym)
+                                   (substring (symbol-name sym) 3))
+                                 tg-valid-actions))
+             (completion-result (try-completion input candidates)))
+        (cond
+         ;; Exact match - use input as the command
+         ((eq completion-result t)
+          (when (member input candidates)
+            (let ((fn (intern (concat "tg-" input))))
+              (when (fboundp fn)
+                (documentation fn)))))
+         ;; Unique prefix match - use the completed string
+         ((stringp completion-result)
+          (when (member completion-result candidates)
+            (let ((fn (intern (concat "tg-" completion-result))))
+              (when (fboundp fn)
+                (documentation fn)))))
+         ;; Ambiguous or no match - return nil
+         (t nil))))))
+
 (defun tg-mprinc (string &optional no-newline)
   " Print something out, in window mode"
   (if (stringp string)
@@ -38,7 +69,9 @@
   "Major mode for running text game."
   (make-local-variable 'scroll-step)
   (setq scroll-step 2)
-  (local-set-key (kbd "<RET>") #'tg-parse))
+  (local-set-key (kbd "<RET>") #'tg-parse)
+  (setq-local eldoc-documentation-function #'tg-eldoc-function)
+  (eldoc-mode 1))
 
 
 
