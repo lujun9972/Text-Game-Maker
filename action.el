@@ -107,6 +107,38 @@
     (add-equipment-to-creature myself equipment)
     (tg-display (format "您装备了%s" equipment))))
 
+(tg-defaction tg-attack (target)
+  "使用'attack <target>'攻击当前房间中的生物"
+  (when (stringp target)
+    (setq target (intern target)))
+  (unless (creature-exist-in-room-p current-room target)
+    (throw 'exception (format "房间中没有%s" target)))
+  (let* ((target-creature (get-creature-by-symbol target))
+         (my-attack (or (cdr (assoc 'attack (Creature-attr myself))) 0))
+         (my-defense (or (cdr (assoc 'defense (Creature-attr myself))) 0))
+         (target-attack (or (cdr (assoc 'attack (Creature-attr target-creature))) 0))
+         (target-defense (or (cdr (assoc 'defense (Creature-attr target-creature))) 0))
+         (damage (max 1 (- my-attack target-defense))))
+    (take-effect-to-creature target-creature (cons 'hp (- damage)))
+    (tg-display (format "你攻击了%s，造成 %d 点伤害！" target damage))
+    (if (<= (cdr (assoc 'hp (Creature-attr target-creature))) 0)
+        (progn
+          (remove-creature-from-room current-room target)
+          (when-let* ((trig (Creature-death-trigger target-creature)))
+            (funcall trig))
+          (tg-display (format "%s被击败了！" target)))
+      (let* ((counter-damage (max 1 (- target-attack my-defense))))
+        (take-effect-to-creature myself (cons 'hp (- counter-damage)))
+        (tg-display (format "%s反击，造成 %d 点伤害！" target counter-damage))
+        (if (<= (cdr (assoc 'hp (Creature-attr myself))) 0)
+            (progn
+              (tg-display "你被击败了！游戏结束！")
+              (setq tg-over-p t))
+          (tg-display (format "你的HP: %d | %s的HP: %d"
+                              (cdr (assoc 'hp (Creature-attr myself)))
+                              target
+                              (cdr (assoc 'hp (Creature-attr target-creature))))))))))
+
 (tg-defaction tg-status(&optional useless)
   "使用'status'查看自己的状态"
   (tg-display (describe myself)))

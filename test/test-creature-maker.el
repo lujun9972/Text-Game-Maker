@@ -144,4 +144,19 @@
       (should (string-match-p "goblin" desc))
       (should (string-match-p "A green goblin" desc)))))
 
+;; --- death-trigger ---
+
+(ert-deftest test-build-creature-with-death-trigger ()
+  "build-creature should parse death-trigger from config."
+  (let* ((result (build-creature '(dragon "火龙" ((hp . 50)) () () (lambda () (tg-display "龙死了")))))
+         (cr (cdr result)))
+    (should (equal (car result) 'dragon))
+    (should (functionp (Creature-death-trigger cr)))))
+
+(ert-deftest test-build-creature-without-death-trigger ()
+  "build-creature should set death-trigger to nil when not provided."
+  (let* ((result (build-creature '(goblin "哥布林" ((hp . 30)) () ())))
+         (cr (cdr result)))
+    (should (null (Creature-death-trigger cr)))))
+
 (provide 'test-creature-maker)

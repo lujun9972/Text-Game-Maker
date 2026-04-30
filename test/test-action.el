@@ -475,4 +475,169 @@
     (tg-quit)
     (should tg-over-p)))
 
+;; --- tg-attack ---
+
+(ert-deftest test-tg-attack-target-in-room ()
+  "tg-attack should deal damage to target creature."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        inventorys-alist creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(goblin)))
+           (cr (make-Creature :symbol 'goblin :description "A goblin"
+                              :attr '((hp . 30) (attack . 6) (defense . 2)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5))))
+      (setq creatures-alist (list (cons 'goblin cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (tg-attack 'goblin)
+      ;; damage = max(1, 10 - 2) = 8, goblin hp: 30 - 8 = 22
+      (should (= (cdr (assoc 'hp (Creature-attr cr))) 22))
+      ;; counter damage = max(1, 6 - 5) = 1, hero hp: 100 - 1 = 99
+      (should (= (cdr (assoc 'hp (Creature-attr myself))) 99)))))
+
+(ert-deftest test-tg-attack-target-not-in-room ()
+  "tg-attack should throw exception when target not in room."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let ((room (make-Room :symbol 'room1 :description "A room")))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100))))
+      (setq creatures-alist (list (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (should (equal (catch 'exception (tg-attack 'ghost))
+                     "房间中没有ghost")))))
+
+(ert-deftest test-tg-attack-kills-target ()
+  "tg-attack should remove target from room when HP drops to 0."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
+           (cr (make-Creature :symbol 'rat :description "A rat"
+                              :attr '((hp . 5) (attack . 1) (defense . 0)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5))))
+      (setq creatures-alist (list (cons 'rat cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (tg-attack 'rat)
+      (should-not (creature-exist-in-room-p room 'rat)))))
+
+(ert-deftest test-tg-attack-triggers-death-trigger ()
+  "tg-attack should call death-trigger when target is killed."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
+           (cr (make-Creature :symbol 'rat :description "A rat"
+                              :attr '((hp . 5) (attack . 1) (defense . 0))
+                              :death-trigger (lambda () (setq test-trigger-called t)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5))))
+      (setq creatures-alist (list (cons 'rat cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (setq test-trigger-called nil)
+      (tg-attack 'rat)
+      (should test-trigger-called))))
+
+(ert-deftest test-tg-attack-counter-attack ()
+  "tg-attack should trigger counter-attack when target survives."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(orc)))
+           (cr (make-Creature :symbol 'orc :description "An orc"
+                              :attr '((hp . 50) (attack . 8) (defense . 3)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 2))))
+      (setq creatures-alist (list (cons 'orc cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (tg-attack 'orc)
+      ;; damage to orc = max(1, 10-3) = 7, orc hp: 50-7 = 43
+      (should (= (cdr (assoc 'hp (Creature-attr cr))) 43))
+      ;; counter = max(1, 8-2) = 6, hero hp: 100-6 = 94
+      (should (= (cdr (assoc 'hp (Creature-attr myself))) 94)))))
+
+(ert-deftest test-tg-attack-player-death ()
+  "tg-attack should end game when player HP drops to 0."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself tg-over-p)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(dragon)))
+           (cr (make-Creature :symbol 'dragon :description "Dragon"
+                              :attr '((hp . 100) (attack . 50) (defense . 20)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 5) (attack . 10) (defense . 0))))
+      (setq creatures-alist (list (cons 'dragon cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (setq tg-over-p nil)
+      (tg-attack 'dragon)
+      ;; hero hp: 5 - max(1, 50-0) = 5-50 = -45, dead
+      (should tg-over-p))))
+
+(ert-deftest test-tg-attack-no-attack-attr-defaults-zero ()
+  "tg-attack should default attack/defense to 0 when not in attr."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(slime)))
+           (cr (make-Creature :symbol 'slime :description "A slime"
+                              :attr '((hp . 10)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100))))
+      (setq creatures-alist (list (cons 'slime cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (tg-attack 'slime)
+      ;; damage = max(1, 0-0) = 1, slime hp: 10-1 = 9
+      (should (= (cdr (assoc 'hp (Creature-attr cr))) 9))
+      ;; counter = max(1, 0-0) = 1, hero hp: 100-1 = 99
+      (should (= (cdr (assoc 'hp (Creature-attr myself))) 99)))))
+
+(ert-deftest test-tg-attack-string-target ()
+  "tg-attack should accept string target and convert to symbol."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(goblin)))
+           (cr (make-Creature :symbol 'goblin :description "A goblin"
+                              :attr '((hp . 30) (attack . 0) (defense . 0)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5))))
+      (setq creatures-alist (list (cons 'goblin cr)
+                                  (cons 'hero myself)))
+      (setq display-fn #'ignore)
+      (tg-attack "goblin")
+      ;; Should work same as symbol, damage = max(1, 10-0) = 10, hp: 30-10 = 20
+      (should (= (cdr (assoc 'hp (Creature-attr cr))) 20)))))
+
 (provide 'test-action)
