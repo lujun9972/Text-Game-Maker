@@ -5,10 +5,14 @@
 
 (require 'text-game-maker)
 
+(defvar sample-game-dir nil
+  "Sample game config files directory.")
+(setq sample-game-dir (file-name-directory (or load-file-name buffer-file-name)))
+
 (defun play-sample-game ()
   "启动地牢冒险示例游戏。"
   (interactive)
-  (let ((sample-dir (file-name-directory (or load-file-name buffer-file-name))))
+  (let ((sample-dir sample-game-dir))
     (map-init (expand-file-name "room-config.el" sample-dir)
               (expand-file-name "map-config.el" sample-dir))
     (inventorys-init (expand-file-name "inventory-config.el" sample-dir))
