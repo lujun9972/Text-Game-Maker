@@ -161,6 +161,23 @@
       (should (equal (catch 'exception (tg-watch 'ghost))
                      "房间中没有ghost")))))
 
+(ert-deftest test-tg-watch-creature ()
+  "tg-watch should describe a creature in the room."
+  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+                                        inventorys-alist creatures-alist)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-instance 'Room :symbol 'room1 :description "A room" :creature '(goblin)))
+           (cr (make-instance 'Creature :symbol 'goblin :description "A goblin"
+                              :attr '((hp . 20)))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq currect-room room)
+      (setq inventorys-alist nil)
+      (setq creatures-alist (list (cons 'goblin cr)))
+      (setq display-fn #'ignore)
+      (let ((result (tg-watch 'goblin)))
+        (should (string-match-p "goblin" result))))))
+
 ;; --- tg-take ---
 
 (ert-deftest test-tg-take-existing-item ()
@@ -387,6 +404,28 @@
       (setq display-fn #'ignore)
       (should (equal (catch 'exception (tg-wear 'potion))
                      "potion不可装备")))))
+
+(ert-deftest test-tg-wear-triggers-wear-trigger ()
+  "tg-wear should call wear-trigger on the inventory."
+  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+                                        inventorys-alist creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let ((room (make-instance 'Room :symbol 'room1 :description "A room"))
+          (inv (make-instance 'Inventory :symbol 'armor :description "Steel armor"
+                              :type '(wearable) :effects nil
+                              :wear-trigger (lambda () (setq test-trigger-called t))))
+          (cr (make-instance 'Creature :symbol 'hero :description "The hero"
+                             :inventory '(armor))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq currect-room room)
+      (setq inventorys-alist (list (cons 'armor inv)))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (setq display-fn #'ignore)
+      (setq test-trigger-called nil)
+      (tg-wear 'armor)
+      (should test-trigger-called))))
 
 ;; --- tg-status ---
 
