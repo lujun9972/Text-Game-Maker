@@ -60,7 +60,7 @@
 
 (defun remove-equipment-from-creature (creature equipment)
   ""
-  (setf (member-equipment equipment) (remove equipment (member-equipment creature))))
+  (setf (member-equipment creature) (remove equipment (member-equipment creature))))
 
 (defun add-equipment-to-creature (creature equipment)
   ""

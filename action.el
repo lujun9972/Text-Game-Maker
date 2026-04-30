@@ -111,7 +111,7 @@
 	  (funcall (slot-value object 'use-trigger)))
 	(take-effects-to-creature myself (member-effects object))
 	(remove-inventory-from-creature myself equipment)
-	(add-inventory-to-creature creature myself equipment)
+	(add-equipment-to-creature myself equipment)
 	(tg-display (format "您装备了%s" equipment))))
 
 (tg-defaction tg-status(&optional useless)
