@@ -1,4 +1,4 @@
-#+TITLE: Readme
+#+TITLE: Text-Game-Maker
 #+AUTHOR: DarkSun
 #+CATEGORY: Text-Game-Maker
 #+DATE: [2015-07-09 星期四 20:11]
@@ -6,6 +6,111 @@
 
 * 简介
 Text-Game-Maker是一款制作文本游戏的工具,其功能仿照RPG Maker
+
+* 特性
+
+- 基于 EIEIO 的面向对象设计,包含 Room、Inventory、Creature 三大核心类
+- 房间系统:支持房间描述、物品、生物、进出触发事件
+- 地图系统:通过文本配置文件定义二维地图,支持上下左右导航
+- 物品系统:支持 usable(消耗品)和 wearable(装备)两种类型,可配置使用效果
+- 生物系统:支持属性管理、物品携带、装备穿戴
+- 触发器系统:为房间、物品、生物提供丰富的触发事件机制
+- 自定义 major mode (=tg-mode=):提供交互式游戏命令行界面
+- 可扩展的 action 系统:通过 =tg-defaction= 宏轻松定义新的游戏命令
+
+* 文件结构
+
+| 文件                    | 说明                         |
+|-------------------------+------------------------------|
+| =text-game-maker.el=    | 主入口文件,加载所有模块      |
+| =tg-mode.el=            | 游戏主模式,命令解析与界面    |
+| =room-maker.el=         | 房间与地图系统               |
+| =inventory-maker.el=    | 物品系统                     |
+| =creature-maker.el=     | 生物系统                     |
+| =action.el=             | 游戏命令定义                 |
+
+* 安装
+
+1. 将项目目录克隆到本地:
+   #+begin_src sh
+   git clone <repository-url> ~/myLisp/Text-Game-Maker
+   #+end_src
+
+2. 在 Emacs 配置中添加:
+   #+begin_src elisp
+   (add-to-list 'load-path "~/myLisp/Text-Game-Maker")
+   (require 'text-game-maker)
+   #+end_src
+
+* 使用方法
+
+** 编写配置文件
+
+*** 房间配置 (=room-config=)
+每个房间为一个列表: =(<symbol> <description> <inventory-list> <creature-list>)=
+#+begin_src elisp
+((living-room "一间宽敞的客厅" (key sword) (cat))
+ (bedroom "一间温馨的卧室" (pillow) ()))
+#+end_src
+
+*** 地图配置 (=room-map-config=)
+用文本文件表示二维地图,每个符号对应一个房间的 symbol:
+#+begin_src example
+living-room kitchen
+bedroom     bathroom
+#+end_src
+
+*** 物品配置 (=inventory-config=)
+每个物品为一个列表: =(<symbol> <description> <type> <effects>)=
+#+begin_src elisp
+((key "一把 rusty 的钥匙" usable ((wisdom . 1)))
+ (sword "一把锋利的宝剑" wearable ((attack . 5) (defense . 2))))
+#+end_src
+
+*** 生物配置 (=creature-config=)
+每个生物为一个列表: =(<symbol> <description> <attr> <inventory> <equipment>)=
+#+begin_src elisp
+((hero "勇敢的冒险者" ((hp . 100) (attack . 10)) (key) ()))
+#+end_src
+
+** 启动游戏
+
+#+begin_src elisp
+(map-init "/path/to/room-config" "/path/to/room-map-config")
+(inventorys-init "/path/to/inventory-config")
+(creatures-init "/path/to/creature-config")
+(tg-mode)
+#+end_src
+
+** 游戏命令
+
+| 命令             | 说明                           |
+|------------------+--------------------------------|
+| =move <direction>= | 向指定方向移动 (up/right/down/left) |
+| =watch=          | 查看当前环境                   |
+| =watch <item>=   | 查看指定物品或生物             |
+| =take <item>=    | 捡起房间中的物品               |
+| =drop <item>=    | 丢弃身上的物品                 |
+| =use <item>=     | 使用消耗品                     |
+| =wear <item>=    | 装备物品                       |
+| =status=         | 查看自身状态                   |
+| =help=           | 查看所有命令说明               |
+| =help <action>=  | 查看指定命令说明               |
+| =quit=           | 退出游戏                       |
+
+** 自定义命令
+
+使用 =tg-defaction= 宏可以方便地扩展新的游戏命令:
+#+begin_src elisp
+(tg-defaction tg-attack (target)
+  "使用'attack <target>'攻击目标"
+  (message "你攻击了 %s!" target))
+#+end_src
+
+* 依赖
+
+- Emacs 24+ (需要内置 EIEIO 库)
+- 无其他外部依赖
 
 * 未完成的工作
 
