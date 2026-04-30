@@ -90,6 +90,14 @@
     (should (equipment-exist-in-creature-p cr 'armor))
     (should-not (equipment-exist-in-creature-p cr 'shield))))
 
+(ert-deftest test-remove-equipment-from-creature ()
+  "remove-equipment-from-creature should remove equipment from creature's equipment slot."
+  (let ((cr (test-make-creature :symbol 'hero :description "test" :equipment '(armor helmet shield))))
+    (remove-equipment-from-creature cr 'helmet)
+    (should-not (equipment-exist-in-creature-p cr 'helmet))
+    (should (equipment-exist-in-creature-p cr 'armor))
+    (should (equipment-exist-in-creature-p cr 'shield))))
+
 ;; --- take-effect-to-creature ---
 
 (ert-deftest test-take-effect-existing-attr ()

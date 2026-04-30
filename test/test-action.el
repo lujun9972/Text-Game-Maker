@@ -329,6 +329,66 @@
       (should (equal (catch 'exception (tg-use 'rock))
                      "rock不可使用")))))
 
+;; --- tg-wear ---
+
+(ert-deftest test-tg-wear-wearable-item ()
+  "tg-wear should equip item from creature's inventory."
+  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+                                        inventorys-alist creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
+           (inv (make-instance 'Inventory :symbol 'armor :description "Steel armor"
+                               :type '(wearable) :effects '((def . 5))))
+           (cr (make-instance 'Creature :symbol 'hero :description "The hero"
+                              :attr '((hp . 100)) :inventory '(armor) :equipment '(armor))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq currect-room room)
+      (setq inventorys-alist (list (cons 'armor inv)))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (setq display-fn #'ignore)
+      (tg-wear 'armor)
+      ;; After fix: remove-inventory-from-creature removes from inventory,
+      ;; add-equipment-to-creature adds to equipment (both operate on correct creature)
+      (should (equipment-exist-in-creature-p cr 'armor)))))
+
+(ert-deftest test-tg-wear-not-carried ()
+  "tg-wear should throw exception when item not in creature's equipment list."
+  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+                                        creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
+           (cr (make-instance 'Creature :symbol 'hero :description "The hero")))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq currect-room room)
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (setq display-fn #'ignore)
+      (should (equal (catch 'exception (tg-wear 'armor))
+                     "未携带armor")))))
+
+(ert-deftest test-tg-wear-not-wearable ()
+  "tg-wear should throw exception for non-wearable items."
+  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+                                        inventorys-alist creatures-alist myself)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
+           (inv (make-instance 'Inventory :symbol 'potion :description "A potion"
+                               :type '(usable) :effects '((hp . 10))))
+           (cr (make-instance 'Creature :symbol 'hero :description "The hero"
+                              :equipment '(potion))))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq currect-room room)
+      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (setq display-fn #'ignore)
+      (should (equal (catch 'exception (tg-wear 'potion))
+                     "potion不可使用")))))
+
 ;; --- tg-status ---
 
 (ert-deftest test-tg-status ()
