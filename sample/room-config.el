@@ -1,0 +1,6 @@
+(entrance "地牢入口。沉重的石门在你身后缓缓关闭，四周弥漫着腐朽的气息。墙壁上的火把发出微弱的光芒。" (torch rusty-key) (guard))
+(hall "宏伟的大厅。破旧的水晶灯从天花板上垂下，地板上布满了裂痕和灰尘。" (map potion gold) (goblin bat))
+(throne "王座间。一张腐朽的石制王座矗立在房间尽头，周围的空气中漂浮着诡异的光点。" (crown gem sword-of-king) (skeleton-king skeleton-minion))
+(cell "阴暗潮湿的牢房。铁栅栏已经锈蚀，角落里堆着一些破烂的稻草。" (bread lockpick) (rat prisoner))
+(corridor "狭窄的走廊。两侧墙壁上的火把忽明忽暗，远处传来奇怪的声响。" (shield leather-armor) (spider slime))
+(armory "废弃的武器库。锈迹斑斑的武器架上还残留着一些可以使用的装备。" (iron-sword bow arrow helmet) (golem))
