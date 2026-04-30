@@ -1,3 +1,6 @@
+(require 'eieio)
+(require 'thingatpt)
+(require 'cl)
 (defvar display-fn #'message
   "显示信息的函数")
 (defvar creatures-alist nil

@@ -1,3 +1,5 @@
+(require 'eieio)
+(require 'thingatpt)
 (defvar display-fn #'message
   "显示信息的函数")
 (defvar rooms-alist nil
