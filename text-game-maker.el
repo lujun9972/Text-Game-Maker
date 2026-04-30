@@ -14,6 +14,7 @@
 (require 'inventory-maker)
 (require 'creature-maker)
 (require 'action)
+(require 'tg-config-generator)
 
 
 (provide 'text-game-maker)

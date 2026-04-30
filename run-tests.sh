@@ -18,4 +18,5 @@ emacs --batch --no-site-file --no-init-file \
     (require 'test-creature-maker)
     (require 'test-action)
     (require 'test-tg-mode)
+    (require 'test-tg-config-generator)
     (ert-run-tests-batch-and-exit '(or \"test-\" t)))"
