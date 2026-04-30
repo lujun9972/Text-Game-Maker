@@ -28,6 +28,8 @@ Text-Game-Maker是一款制作文本游戏的工具,其功能仿照RPG Maker
 | =inventory-maker.el=    | 物品系统                     |
 | =creature-maker.el=     | 生物系统                     |
 | =action.el=             | 游戏命令定义                 |
+| =run-tests.sh=          | 测试运行脚本                 |
+| =test/=                 | ERT 单元测试目录             |
 
 * 安装
 
@@ -110,7 +112,40 @@ bedroom     bathroom
 * 依赖
 
 - Emacs 24+ (需要内置 EIEIO 库)
-- 无其他外部依赖
+- 内置依赖: =eieio=, =thingatpt=, =cl=
+
+* 测试
+
+项目包含 95 个 ERT 单元测试,覆盖所有核心模块:
+
+#+begin_src sh
+bash run-tests.sh
+#+end_src
+
+测试文件说明:
+
+| 测试文件                      | 测试数量 | 覆盖内容                                 |
+|-------------------------------+----------+------------------------------------------|
+| =test-text-game-maker.el=     |        5 | file-content, tg-display                 |
+| =test-room-maker.el=          |       22 | Room 类, 地图操作, beyond-rooms          |
+| =test-inventory-maker.el=     |       16 | Inventory 类, 类型检查                   |
+| =test-creature-maker.el=      |       18 | Creature 类, 效果系统, 装备操作          |
+| =test-action.el=              |       28 | tg-defaction 宏, 全部游戏命令与 trigger  |
+| =test-tg-mode.el=             |        6 | tg-mprinc, tg-mode, tg-parse             |
+
+* 更新日志
+
+** [2026-04-30] Bug 修复与测试覆盖
+
+- 新增 95 个 ERT 单元测试,覆盖所有模块
+- 修复 =remove-equipment-from-creature= 修改错误 slot 的 bug
+- 修复 =tg-wear= 中 =creature= 变量未绑定的 bug
+- 修复 =tg-wear= 检查 equipment 而非 inventory 的 bug
+- 修复 =tg-wear= 错误信息"不可使用"应为"不可装备"
+- 修复 =tg-wear= 触发 =use-trigger= 而非 =wear-trigger= 的 bug
+- 修复 =tg-watch= 无法查看 creature 的 bug
+- 修复所有模块缺少的 =require= 依赖声明
+- 移除 =action.el= 中硬编码的 load-path
 
 * 未完成的工作
 
