@@ -162,11 +162,11 @@
       (unwind-protect
           (progn
             (write-region "room1 room2\nroom1 room2" nil map-file)
-            (test-with-globals-saved (rooms-alist room-map currect-room)
+            (test-with-globals-saved (rooms-alist room-map current-room)
               (map-init temp-file map-file)
               (should (= (length rooms-alist) 2))
               (should (= (length room-map) 2))
-              (should (equal (member-symbol currect-room) 'room1))))
+              (should (equal (member-symbol current-room) 'room1))))
         (delete-file map-file)))))
 
 ;; --- describe ---

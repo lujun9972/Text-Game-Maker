@@ -47,33 +47,33 @@
          (rmap '((room1 room2))))
     (setq rooms-alist (list (cons 'room1 room1) (cons 'room2 room2)))
     (setq room-map rmap)
-    (setq currect-room room1)
+    (setq current-room room1)
     (list :room1 room1 :room2 room2)))
 
 (ert-deftest test-tg-move-valid-direction-string ()
   "tg-move should move to correct room with string direction."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((display-output nil)
           (env (test-setup-move-env)))
       (setq display-fn (lambda (&rest args) (setq display-output args)))
       ;; room1 is at (0,0), right neighbor is room2
       (tg-move "right")
-      (should (equal (member-symbol currect-room) 'room2)))))
+      (should (equal (member-symbol current-room) 'room2)))))
 
 (ert-deftest test-tg-move-valid-direction-symbol ()
   "tg-move should move to correct room with symbol direction."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((display-output nil)
           (env (test-setup-move-env)))
       (setq display-fn (lambda (&rest args) (setq display-output args)))
       (tg-move 'right)
-      (should (equal (member-symbol currect-room) 'room2)))))
+      (should (equal (member-symbol current-room) 'room2)))))
 
 (ert-deftest test-tg-move-unknown-direction ()
   "tg-move should throw exception for unknown direction."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (test-setup-move-env)
     (setq display-fn #'ignore)
@@ -82,7 +82,7 @@
 
 (ert-deftest test-tg-move-no-path ()
   "tg-move should throw exception when there is no room in that direction."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (test-setup-move-env)
     (setq display-fn #'ignore)
@@ -92,14 +92,14 @@
 
 (ert-deftest test-tg-move-triggers-out-trigger ()
   "tg-move should call out-trigger when leaving room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room1 (make-instance 'Room :symbol 'room1 :description "Room 1"
                                 :out-trigger (lambda () (setq test-trigger-called t))))
           (room2 (make-instance 'Room :symbol 'room2 :description "Room 2")))
       (setq rooms-alist (list (cons 'room1 room1) (cons 'room2 room2)))
       (setq room-map '((room1 room2)))
-      (setq currect-room room1)
+      (setq current-room room1)
       (setq display-fn #'ignore)
       (setq test-trigger-called nil)
       (tg-move "right")
@@ -107,14 +107,14 @@
 
 (ert-deftest test-tg-move-triggers-in-trigger ()
   "tg-move should call in-trigger when entering room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room1 (make-instance 'Room :symbol 'room1 :description "Room 1"))
           (room2 (make-instance 'Room :symbol 'room2 :description "Room 2"
                                 :in-trigger (lambda () (setq test-trigger-called t)))))
       (setq rooms-alist (list (cons 'room1 room1) (cons 'room2 room2)))
       (setq room-map '((room1 room2)))
-      (setq currect-room room1)
+      (setq current-room room1)
       (setq display-fn #'ignore)
       (setq test-trigger-called nil)
       (tg-move "right")
@@ -124,25 +124,25 @@
 
 (ert-deftest test-tg-watch-room-description ()
   "tg-watch with no args should describe current room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq display-fn #'ignore)
       (let ((result (tg-watch)))
         (should (string-match-p "room1" result))))))
 
 (ert-deftest test-tg-watch-inventory ()
   "tg-watch with inventory symbol should describe the inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn inventorys-alist)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn inventorys-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room" :inventory '(potion)))
            (inv (make-instance 'Inventory :symbol 'potion :description "A potion" :type '(usable) :effects nil)))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq display-fn #'ignore)
       (let ((result (tg-watch 'potion)))
@@ -150,12 +150,12 @@
 
 (ert-deftest test-tg-watch-nonexistent-item ()
   "tg-watch should throw exception for nonexistent item in room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn inventorys-alist)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn inventorys-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist nil)
       (setq display-fn #'ignore)
       (should (equal (catch 'exception (tg-watch 'ghost))
@@ -163,7 +163,7 @@
 
 (ert-deftest test-tg-watch-creature ()
   "tg-watch should describe a creature in the room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room" :creature '(goblin)))
@@ -171,7 +171,7 @@
                               :attr '((hp . 20)))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist nil)
       (setq creatures-alist (list (cons 'goblin cr)))
       (setq display-fn #'ignore)
@@ -182,7 +182,7 @@
 
 (ert-deftest test-tg-take-existing-item ()
   "tg-take should move item from room to creature inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room" :inventory '(potion)))
@@ -190,7 +190,7 @@
            (cr (make-instance 'Creature :symbol 'hero :description "The hero" :attr '((hp . 100)))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -201,19 +201,19 @@
 
 (ert-deftest test-tg-take-nonexistent-item ()
   "tg-take should throw exception for nonexistent item."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq display-fn #'ignore)
       (should (equal (catch 'exception (tg-take 'nothing))
                      "房间中没有nothing")))))
 
 (ert-deftest test-tg-take-triggers-take-trigger ()
   "tg-take should call take-trigger on the inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room" :inventory '(potion)))
@@ -222,7 +222,7 @@
           (cr (make-instance 'Creature :symbol 'hero :description "The hero")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -235,7 +235,7 @@
 
 (ert-deftest test-tg-drop-carried-item ()
   "tg-drop should move item from creature to room."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -243,7 +243,7 @@
            (cr (make-instance 'Creature :symbol 'hero :description "The hero" :inventory '(potion))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -254,14 +254,14 @@
 
 (ert-deftest test-tg-drop-not-carried ()
   "tg-drop should throw exception when item not carried."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
            (cr (make-instance 'Creature :symbol 'hero :description "The hero")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
       (setq display-fn #'ignore)
@@ -270,7 +270,7 @@
 
 (ert-deftest test-tg-drop-triggers-drop-trigger ()
   "tg-drop should call drop-trigger on the inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -279,7 +279,7 @@
           (cr (make-instance 'Creature :symbol 'hero :description "The hero" :inventory '(potion))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -292,7 +292,7 @@
 
 (ert-deftest test-tg-use-usable-item ()
   "tg-use should apply effects and remove consumable item."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -302,7 +302,7 @@
                               :attr '((hp . 100)) :inventory '(potion))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -313,14 +313,14 @@
 
 (ert-deftest test-tg-use-not-carried ()
   "tg-use should throw exception when item not carried."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
            (cr (make-instance 'Creature :symbol 'hero :description "The hero")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
       (setq display-fn #'ignore)
@@ -329,7 +329,7 @@
 
 (ert-deftest test-tg-use-not-consumable ()
   "tg-use should throw exception for non-consumable items."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -338,7 +338,7 @@
            (cr (make-instance 'Creature :symbol 'hero :description "The hero" :inventory '(rock))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'rock inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -350,7 +350,7 @@
 
 (ert-deftest test-tg-wear-wearable-item ()
   "tg-wear should equip item from creature's inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -360,7 +360,7 @@
                               :attr '((hp . 100)) :inventory '(armor))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'armor inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -371,14 +371,14 @@
 
 (ert-deftest test-tg-wear-not-carried ()
   "tg-wear should throw exception when item not in creature's equipment list."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
            (cr (make-instance 'Creature :symbol 'hero :description "The hero")))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
       (setq display-fn #'ignore)
@@ -387,7 +387,7 @@
 
 (ert-deftest test-tg-wear-not-wearable ()
   "tg-wear should throw exception for non-wearable items."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -397,7 +397,7 @@
                               :inventory '(potion))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'potion inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)
@@ -407,7 +407,7 @@
 
 (ert-deftest test-tg-wear-triggers-wear-trigger ()
   "tg-wear should call wear-trigger on the inventory."
-  (test-with-globals-saved (rooms-alist room-map currect-room tg-valid-actions display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
                                         inventorys-alist creatures-alist myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-instance 'Room :symbol 'room1 :description "A room"))
@@ -418,7 +418,7 @@
                              :inventory '(armor))))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
-      (setq currect-room room)
+      (setq current-room room)
       (setq inventorys-alist (list (cons 'armor inv)))
       (setq creatures-alist (list (cons 'hero cr)))
       (setq myself cr)

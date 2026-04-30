@@ -21,17 +21,17 @@
   (setq directory (cdr (assoc directory '((up . 0) (right . 1) (down . 2) (left . 3)))))
   (unless directory
 	(throw 'exception "未知的方向"))
-  (let ((new-room-symbol (nth directory (beyond-rooms (member-symbol currect-room) room-map))))
+  (let ((new-room-symbol (nth directory (beyond-rooms (member-symbol current-room) room-map))))
 	(unless new-room-symbol
 	  (throw 'exception "那里没有路"))
 	;; 触发离开事件
-	(when (member-out-trigger currect-room)
-	  (funcall (member-out-trigger currect-room)))
-	(setq currect-room (get-room-by-symbol new-room-symbol))
+	(when (member-out-trigger current-room)
+	  (funcall (member-out-trigger current-room)))
+	(setq current-room (get-room-by-symbol new-room-symbol))
 	;; 触发进入事件
-	(when (member-in-trigger currect-room)
-	  (funcall (member-in-trigger currect-room)))
-	(tg-display (describe currect-room))))
+	(when (member-in-trigger current-room)
+	  (funcall (member-in-trigger current-room)))
+	(tg-display (describe current-room))))
 
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境
@@ -39,10 +39,10 @@
   (cond ((stringp symbol)
 		 (setq symbol (intern symbol))))
   (unless (or (null symbol)
-			  (inventory-exist-in-room-p currect-room symbol)
-			  (creature-exist-in-room-p currect-room symbol))
+			  (inventory-exist-in-room-p current-room symbol)
+			  (creature-exist-in-room-p current-room symbol))
 	(throw 'exception (format "房间中没有%s" symbol )))
-  (let ((object (or (unless symbol currect-room)
+  (let ((object (or (unless symbol current-room)
 					(get-room-by-symbol symbol)
 					(get-inventory-by-symbol symbol t)
 					(get-creature-by-symbol symbol))))
@@ -56,7 +56,7 @@
   "使用'take 物品'获取ROOM中的物品"
   (cond ((stringp inventory)
 		 (setq inventory (intern inventory))))
-  (unless (inventory-exist-in-room-p currect-room inventory)
+  (unless (inventory-exist-in-room-p current-room inventory)
 	(throw 'exception (format "房间中没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
 	(when (and (slot-exists-p object 'take-trigger)
@@ -64,7 +64,7 @@
 			   (slot-value object 'take-trigger))
 	  (funcall (slot-value object 'take-trigger)))
 	(add-inventory-to-creature myself inventory)
-	(remove-inventory-from-room currect-room inventory)))
+	(remove-inventory-from-room current-room inventory)))
 
 (tg-defaction tg-drop (inventory)
   "使用'drop 物品'丢弃身上的物品"
@@ -78,7 +78,7 @@
 			   (slot-value object 'drop-trigger))
 	  (funcall (slot-value object 'drop-trigger)))
 	(remove-inventory-from-creature myself inventory)
-	(add-inventory-to-room currect-room inventory)))
+	(add-inventory-to-room current-room inventory)))
 
 (tg-defaction tg-use (inventory)
   "使用'use 物品'消耗自己随身携带的inventory"

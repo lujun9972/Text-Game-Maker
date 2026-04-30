@@ -99,14 +99,14 @@
 	  (list up right down left))))
 
 ;; 定义初始化函数
-(defvar currect-room nil				;
+(defvar current-room nil				;
   "当前所处的room对象")
 
 (defun map-init(room-config-file room-map-config-file)
   "初始化函数,生成room对象,组装map"
   (setq rooms-alist (build-rooms room-config-file))
   (setq room-map (build-room-map room-map-config-file))
-  (setq currect-room (get-room-by-symbol (caar rooms-alist))))
+  (setq current-room (get-room-by-symbol (caar rooms-alist))))
 
 (provide 'room-maker)
 
