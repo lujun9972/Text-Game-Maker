@@ -151,7 +151,7 @@ bash run-tests.sh
 
 + [ ] ROOM要能播放背景音乐,显示背景图片
 + [ ] 为tg-mode添加eldoc支持
-+ [ ] tg-mode的prompt中显示当前的ROOM symbal
-+ [ ] action中的的attrack还未完成
++ [ ] tg-mode的prompt中显示当前的ROOM symbol
++ [ ] action中的的attack还未完成
 + [X] action中的wear还未完成
 + [ ] 提供辅助程序生成room,map,inventory,creature的配置文件
