@@ -3,11 +3,17 @@
 (defvar tg-over-p nil
   "游戏是否结束")
 
+(defun tg-prompt-string ()
+  "Return the prompt string showing current room symbol."
+  (if (and current-room (Room-p current-room))
+      (format "[%s]>" (Room-symbol current-room))
+    ">"))
+
 (defun tg-messages ()
   (if tg-over-p
 	  (text-mode)
 	(tg-fix-screen)
-	(tg-mprinc ">" 'no-newline)
+	(tg-mprinc (tg-prompt-string) 'no-newline)
 	(message "point-max=%s" (point-max))
 	(goto-char (point-max))))
 
@@ -35,29 +41,33 @@
   (local-set-key (kbd "<RET>") #'tg-parse))
 
 
+
 (defun tg-parse (arg)
   "Function called when return is pressed in interactive mode to parse line."
   (interactive "*p")
   (beginning-of-line)
-  (let ((beg (1+ (point)))
-        line)
+  (let ((line-start (point))
+        line prompt-end)
     (end-of-line)
-    (when (and (not (= beg (point)))
-			   (not (< (point) beg))
-			   (string= ">" (buffer-substring (- beg 1) beg)))
-	  (setq line (downcase (buffer-substring beg (point))))
-	  (princ line)
-	  (tg-mprinc "\n")
-	  (let (action-result action things)
-		(setq action-result (catch 'exception
-							  (setq action (car (split-string line)))
-							  (setq things (cdr (split-string line)))
+    (when (and (not (= line-start (point)))
+               (not (< (point) line-start)))
+      ;; Find the last '>' on this line to locate end of prompt
+      (save-excursion
+        (setq prompt-end (search-backward ">" (line-beginning-position) t)))
+      (when prompt-end
+        (setq line (downcase (buffer-substring (1+ prompt-end) (point))))
+        (princ line)
+        (tg-mprinc "\n")
+        (let (action-result action things)
+	      (setq action-result (catch 'exception
+							    (setq action (car (split-string line)))
+							    (setq things (cdr (split-string line)))
 								(setq action (intern (format "tg-%s" action)))
 								(unless (member action tg-valid-actions)
 									(throw 'exception "未知的命令"))
 								  (apply action things)))
-		(when action-result
-		  (tg-mprinc action-result)))))
+	      (when action-result
+	        (tg-mprinc action-result))))))
   (goto-char (point-max))
   (tg-mprinc "\n")
   (tg-messages))

@@ -88,4 +88,46 @@
       ;; Should not error
       t)))
 
+;; --- tg-prompt-string ---
+
+(ert-deftest test-tg-prompt-string-with-room ()
+  "tg-prompt-string should return [symbol]> when current-room is set."
+  (test-with-globals-saved (current-room)
+    (setq current-room (make-Room :symbol 'living-room :description "A room"))
+    (should (equal (tg-prompt-string) "[living-room]>"))))
+
+(ert-deftest test-tg-prompt-string-without-room ()
+  "tg-prompt-string should return > when current-room is nil."
+  (test-with-globals-saved (current-room)
+    (setq current-room nil)
+    (should (equal (tg-prompt-string) ">"))))
+
+(ert-deftest test-tg-parse-room-prompt ()
+  "tg-parse should parse commands after [room]> prompt."
+  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+    (setq tg-valid-actions '(tg-help))
+    (setq current-room (make-Room :symbol 'living-room :description "A room"))
+    (setq rooms-alist (list (cons 'living-room current-room)))
+    (setq room-map '((living-room)))
+    (with-temp-buffer
+      (tg-mode)
+      (insert "[living-room]>help\n")
+      (goto-char (point-max))
+      (forward-line -1)
+      (let ((output (catch 'exception (tg-parse 1))))
+        (should-not (stringp output))))))
+
+(ert-deftest test-tg-parse-plain-prompt-still-works ()
+  "tg-parse should still parse commands after plain > prompt."
+  (test-with-globals-saved (tg-valid-actions tg-over-p current-room)
+    (setq tg-valid-actions '(tg-help))
+    (setq current-room nil)
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">help\n")
+      (goto-char (point-max))
+      (forward-line -1)
+      (let ((output (catch 'exception (tg-parse 1))))
+        (should-not (stringp output))))))
+
 (provide 'test-tg-mode)
