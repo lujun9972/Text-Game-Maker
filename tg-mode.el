@@ -1,3 +1,5 @@
+;;; tg-mode.el --- Major mode for Text-Game-Maker  -*- lexical-binding: t; -*-
+
 (defvar tg-over-p nil
   "游戏是否结束")
 

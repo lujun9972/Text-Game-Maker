@@ -26,34 +26,34 @@
   (let* ((result (build-creature '(hero "A brave hero" ((hp . 100) (atk . 10)) (sword) (armor))))
          (cr (cdr result)))
     (should (equal (car result) 'hero))
-    (should (equal (member-symbol cr) 'hero))
-    (should (equal (member-description cr) "A brave hero"))
-    (should (equal (member-attr cr) '((hp . 100) (atk . 10))))
-    (should (equal (member-inventory cr) '(sword)))
-    (should (equal (member-equipment cr) '(armor)))))
+    (should (equal (Creature-symbol cr) 'hero))
+    (should (equal (Creature-description cr) "A brave hero"))
+    (should (equal (Creature-attr cr) '((hp . 100) (atk . 10))))
+    (should (equal (Creature-inventory cr) '(sword)))
+    (should (equal (Creature-equipment cr) '(armor)))))
 
 ;; --- build-creatures ---
 
 (ert-deftest test-build-creatures-from-file ()
   "build-creatures should read config file and create creatures."
-  (test-with-temp-file "((hero \"The hero\" ((hp . 100)) () ())
-                         (goblin \"A goblin\" ((hp . 20)) () ()))"
+  (test-with-temp-file "(hero \"The hero\" ((hp . 100)) () ())
+                         (goblin \"A goblin\" ((hp . 20)) () ())"
     (test-with-globals-saved (creatures-alist)
       (let ((results (build-creatures temp-file)))
         (should (= (length results) 2))
-        (should (equal (member-symbol (cdar results)) 'hero))
-        (should (equal (member-symbol (cdadr results)) 'goblin))))))
+        (should (equal (Creature-symbol (cdar results)) 'hero))
+        (should (equal (Creature-symbol (cdadr results)) 'goblin))))))
 
 ;; --- creatures-init ---
 
 (ert-deftest test-creatures-init ()
   "creatures-init should initialize creatures-alist and set myself to first creature."
-  (test-with-temp-file "((hero \"The hero\" ((hp . 100)) () ())
-                         (goblin \"A goblin\" ((hp . 20)) () ()))"
+  (test-with-temp-file "(hero \"The hero\" ((hp . 100)) () ())
+                         (goblin \"A goblin\" ((hp . 20)) () ())"
     (test-with-globals-saved (creatures-alist myself)
       (creatures-init temp-file)
       (should (= (length creatures-alist) 2))
-      (should (equal (member-symbol myself) 'hero)))))
+      (should (equal (Creature-symbol myself) 'hero)))))
 
 ;; --- inventory operations ---
 
@@ -61,14 +61,14 @@
   "add-inventory-to-creature should add inventory to creature."
   (let ((cr (test-make-creature :symbol 'hero :description "test")))
     (add-inventory-to-creature cr 'potion)
-    (should (member 'potion (member-inventory cr)))))
+    (should (member 'potion (Creature-inventory cr)))))
 
 (ert-deftest test-remove-inventory-from-creature ()
   "remove-inventory-from-creature should remove inventory from creature."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :inventory '(sword potion))))
     (remove-inventory-from-creature cr 'sword)
-    (should-not (member 'sword (member-inventory cr)))
-    (should (member 'potion (member-inventory cr)))))
+    (should-not (member 'sword (Creature-inventory cr)))
+    (should (member 'potion (Creature-inventory cr)))))
 
 (ert-deftest test-inventory-exist-in-creature-p ()
   "inventory-exist-in-creature-p should check inventory presence."
@@ -82,7 +82,7 @@
   "add-equipment-to-creature should add equipment to creature."
   (let ((cr (test-make-creature :symbol 'hero :description "test")))
     (add-equipment-to-creature cr 'armor)
-    (should (member 'armor (member-equipment cr)))))
+    (should (member 'armor (Creature-equipment cr)))))
 
 (ert-deftest test-equipment-exist-in-creature-p ()
   "equipment-exist-in-creature-p should check equipment presence."
@@ -104,20 +104,20 @@
   "take-effect-to-creature should increase existing attribute."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :attr '((hp . 100)))))
     (take-effect-to-creature cr '(hp . 10))
-    (should (= (cdr (assoc 'hp (member-attr cr))) 110))))
+    (should (= (cdr (assoc 'hp (Creature-attr cr))) 110))))
 
 (ert-deftest test-take-effect-new-attr ()
   "take-effect-to-creature should add new attribute."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :attr '((hp . 100)))))
     (take-effect-to-creature cr '(mp . 50))
-    (should (= (cdr (assoc 'mp (member-attr cr))) 50))
-    (should (= (cdr (assoc 'hp (member-attr cr))) 100))))
+    (should (= (cdr (assoc 'mp (Creature-attr cr))) 50))
+    (should (= (cdr (assoc 'hp (Creature-attr cr))) 100))))
 
 (ert-deftest test-take-effect-negative-value ()
   "take-effect-to-creature should handle negative values (damage)."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :attr '((hp . 100)))))
     (take-effect-to-creature cr '(hp . -30))
-    (should (= (cdr (assoc 'hp (member-attr cr))) 70))))
+    (should (= (cdr (assoc 'hp (Creature-attr cr))) 70))))
 
 ;; --- take-effects-to-creature ---
 
@@ -125,14 +125,14 @@
   "take-effects-to-creature should apply multiple effects."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :attr '((hp . 100)))))
     (take-effects-to-creature cr '((hp . 10) (mp . 50)))
-    (should (= (cdr (assoc 'hp (member-attr cr))) 110))
-    (should (= (cdr (assoc 'mp (member-attr cr))) 50))))
+    (should (= (cdr (assoc 'hp (Creature-attr cr))) 110))
+    (should (= (cdr (assoc 'mp (Creature-attr cr))) 50))))
 
 (ert-deftest test-take-effects-empty-list ()
   "take-effects-to-creature with empty list should not change attributes."
   (let ((cr (test-make-creature :symbol 'hero :description "test" :attr '((hp . 100)))))
     (take-effects-to-creature cr nil)
-    (should (= (cdr (assoc 'hp (member-attr cr))) 100))))
+    (should (= (cdr (assoc 'hp (Creature-attr cr))) 100))))
 
 ;; --- describe ---
 

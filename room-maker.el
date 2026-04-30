@@ -1,7 +1,13 @@
-(require 'eieio)
+;;; room-maker.el --- Room system for Text-Game-Maker  -*- lexical-binding: t; -*-
+
+(require 'cl-lib)
+(require 'cl-generic)
 (require 'thingatpt)
-(defvar display-fn #'message
-  "显示信息的函数")
+
+(defun read-from-whole-string (string)
+  "Read Emacs Lisp data from STRING as a single form."
+  (read (format "(%s)" string)))
+
 (defvar rooms-alist nil
   "symbol与room对象的映射")
 
@@ -9,26 +15,31 @@
   "根据symbol获取room对象"
   (cdr (assoc symbol rooms-alist)))
 
-;; 定义Room类
-(defclass Room nil
-  ((symbol :initform (intern (format "room-%s" (length rooms-alist))) :initarg :symbol :accessor member-symbol :documentation "ROOM标志")
-   (description :initarg :description :accessor member-description :documentation "ROOM描述")
-   (inventory :initform nil :initarg :inventory :accessor member-inventory :documentation "ROOM中所有的物品")
-   (creature :initform nil :initarg :creature :accessor member-creature :documentation "ROOM中所拥有的生物")
-   (in-trigger :initform nil :initarg :in-trigger :accessor member-in-trigger :documentation "进入该ROOM后触发的事件")
-   (out-trigger :initform nil :initarg :out-trigger :accessor member-out-trigger :documentation "离开该ROOM后触发的事件")
-   ))
+;; 定义Room结构体
+(cl-defstruct Room
+  "Room structure"
+  (symbol nil :documentation "ROOM标志")
+  (description "" :documentation "ROOM描述")
+  (inventory nil :documentation "ROOM中所有的物品")
+  (creature nil :documentation "ROOM中所拥有的生物")
+  (in-trigger nil :documentation "进入该ROOM后触发的事件")
+  (out-trigger nil :documentation "离开该ROOM后触发的事件"))
 
-(defmethod describe ((room Room))
+(cl-defgeneric describe (object)
+  "Describe an object.")
+
+(cl-defmethod describe ((room Room))
   "输出room的描述"
-  (cl-multiple-value-bind (up-room right-room down-room left-room)  (beyond-rooms (member-symbol room) room-map)
-	(format "这里是%s\n%s\n物品列表:%s\n生物列表:%s\n附近的rooms: up:%s right:%s down:%s left:%s" (member-symbol room) (member-description room) (member-inventory room) (member-creature room) up-room right-room down-room left-room)))
+  (cl-multiple-value-bind (up-room right-room down-room left-room) (beyond-rooms (Room-symbol room) room-map)
+	(format "这里是%s\n%s\n物品列表:%s\n生物列表:%s\n附近的rooms: up:%s right:%s down:%s left:%s"
+	        (Room-symbol room) (Room-description room) (Room-inventory room) (Room-creature room)
+	        up-room right-room down-room left-room)))
 
 ;; 创建room列表的方法
 (defun build-room (room-entity)
   "根据`text'创建room,并将room存入`rooms-alist'中"
   (cl-multiple-value-bind (symbol description inventory creature) room-entity
-	(cons symbol (make-instance Room :symbol symbol :description description :inventory inventory :creature creature))))
+	(cons symbol (make-Room :symbol symbol :description description :inventory inventory :creature creature))))
 
 (defun build-rooms(room-config-file)
   "根据`room-config-file'中的配置信息创建各个room"
@@ -37,27 +48,27 @@
 
 (defun remove-inventory-from-room (room inventory)
   ""
-  (setf (member-inventory room) (remove inventory (member-inventory room))))
+  (setf (Room-inventory room) (remove inventory (Room-inventory room))))
 
 (defun add-inventory-to-room (room inventory)
   ""
-  (push inventory (member-inventory room)))
+  (push inventory (Room-inventory room)))
 
 (defun remove-creature-from-room (room inventory)
   ""
-  (setf (member-creature room) (remove inventory (member-creature room))))
+  (setf (Room-creature room) (remove inventory (Room-creature room))))
 
 (defun add-creature-to-room (room creature)
   ""
-  (push creature (member-creature room)))
+  (push creature (Room-creature room)))
 
 (defun inventory-exist-in-room-p (room inventory)
   ""
-  (member inventory (member-inventory room)))
+  (member inventory (Room-inventory room)))
 
 (defun creature-exist-in-room-p (room creature)
   ""
-  (member creature (member-creature room)))
+  (member creature (Room-creature room)))
 ;; 将各room组装成地图的方法
 (defvar room-map nil
   "room的地图")

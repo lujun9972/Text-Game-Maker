@@ -32,32 +32,32 @@
   (let* ((result (build-room '(kitchen "A kitchen" (knife) (cook))))
          (room (cdr result)))
     (should (equal (car result) 'kitchen))
-    (should (equal (member-symbol room) 'kitchen))
-    (should (equal (member-description room) "A kitchen"))
-    (should (equal (member-inventory room) '(knife)))
-    (should (equal (member-creature room) '(cook)))))
+    (should (equal (Room-symbol room) 'kitchen))
+    (should (equal (Room-description room) "A kitchen"))
+    (should (equal (Room-inventory room) '(knife)))
+    (should (equal (Room-creature room) '(cook)))))
 
 (ert-deftest test-build-room-minimal ()
   "build-room should work with minimal tuple (just symbol and description)."
   (let* ((result (build-room '(cellar "A dark cellar")))
            (room (cdr result)))
       (should (equal (car result) 'cellar))
-      (should (equal (member-symbol room) 'cellar))
-      (should (equal (member-description room) "A dark cellar"))
-      (should (null (member-inventory room)))
-      (should (null (member-creature room)))))
+      (should (equal (Room-symbol room) 'cellar))
+      (should (equal (Room-description room) "A dark cellar"))
+      (should (null (Room-inventory room)))
+      (should (null (Room-creature room)))))
 
 ;; --- build-rooms ---
 
 (ert-deftest test-build-rooms-from-file ()
   "build-rooms should read config file and create rooms."
-  (test-with-temp-file "((room1 \"Room One\" (key) ())
-                         (room2 \"Room Two\" () (goblin)))"
+  (test-with-temp-file "(room1 \"Room One\" (key) ())
+                         (room2 \"Room Two\" () (goblin))"
     (test-with-globals-saved (rooms-alist)
       (let ((results (build-rooms temp-file)))
         (should (= (length results) 2))
-        (should (equal (member-symbol (cdar results)) 'room1))
-        (should (equal (member-symbol (cdadr results)) 'room2))))))
+        (should (equal (Room-symbol (cdar results)) 'room1))
+        (should (equal (Room-symbol (cdadr results)) 'room2))))))
 
 ;; --- inventory operations ---
 
@@ -65,14 +65,14 @@
   "add-inventory-to-room should add inventory to room."
   (let ((room (test-make-room :symbol 'room1 :description "test")))
     (add-inventory-to-room room 'sword)
-    (should (member 'sword (member-inventory room)))))
+    (should (member 'sword (Room-inventory room)))))
 
 (ert-deftest test-remove-inventory-from-room ()
   "remove-inventory-from-room should remove inventory from room."
   (let ((room (test-make-room :symbol 'room1 :description "test" :inventory '(sword potion))))
     (remove-inventory-from-room room 'sword)
-    (should-not (member 'sword (member-inventory room)))
-    (should (member 'potion (member-inventory room)))))
+    (should-not (member 'sword (Room-inventory room)))
+    (should (member 'potion (Room-inventory room)))))
 
 (ert-deftest test-inventory-exist-in-room-p ()
   "inventory-exist-in-room-p should check inventory presence."
@@ -86,14 +86,14 @@
   "add-creature-to-room should add creature to room."
   (let ((room (test-make-room :symbol 'room1 :description "test")))
     (add-creature-to-room room 'goblin)
-    (should (member 'goblin (member-creature room)))))
+    (should (member 'goblin (Room-creature room)))))
 
 (ert-deftest test-remove-creature-from-room ()
   "remove-creature-from-room should remove creature from room."
   (let ((room (test-make-room :symbol 'room1 :description "test" :creature '(goblin orc))))
     (remove-creature-from-room room 'goblin)
-    (should-not (member 'goblin (member-creature room)))
-    (should (member 'orc (member-creature room)))))
+    (should-not (member 'goblin (Room-creature room)))
+    (should (member 'orc (Room-creature room)))))
 
 (ert-deftest test-creature-exist-in-room-p ()
   "creature-exist-in-room-p should check creature presence."
@@ -157,7 +157,7 @@
 
 (ert-deftest test-map-init ()
   "map-init should initialize rooms, map, and current room."
-  (test-with-temp-file "((room1 \"Room One\") (room2 \"Room Two\"))"
+  (test-with-temp-file "(room1 \"Room One\") (room2 \"Room Two\")"
     (let ((map-file (make-temp-file "tg-map-test-" nil ".el")))
       (unwind-protect
           (progn
@@ -166,7 +166,7 @@
               (map-init temp-file map-file)
               (should (= (length rooms-alist) 2))
               (should (= (length room-map) 2))
-              (should (equal (member-symbol current-room) 'room1))))
+              (should (equal (Room-symbol current-room) 'room1))))
         (delete-file map-file)))))
 
 ;; --- describe ---

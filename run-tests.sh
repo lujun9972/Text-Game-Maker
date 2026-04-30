@@ -10,10 +10,7 @@ emacs --batch --no-site-file --no-init-file \
   --directory "$TEST_DIR" \
   --eval "(progn
     (require 'ert)
-    (require 'eieio)
-    (require 'eieio-compat)
     (require 'cl-macs)
-    (require 'cl)
     (require 'thingatpt)
     (require 'test-text-game-maker)
     (require 'test-room-maker)

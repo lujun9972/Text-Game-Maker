@@ -32,16 +32,16 @@
 ;; Create test Room instance
 (defun test-make-room (&rest plist)
   "Create a Room instance for testing. PLIST keys: :symbol :description :inventory :creature."
-  (apply #'make-instance 'Room plist))
+  (apply #'make-Room plist))
 
 ;; Create test Inventory instance
 (defun test-make-inventory (&rest plist)
   "Create an Inventory instance for testing. PLIST keys: :symbol :description :type :effects."
-  (apply #'make-instance 'Inventory plist))
+  (apply #'make-Inventory plist))
 
 ;; Create test Creature instance
 (defun test-make-creature (&rest plist)
   "Create a Creature instance for testing. PLIST keys: :symbol :description :attr :inventory :equipment."
-  (apply #'make-instance 'Creature plist))
+  (apply #'make-Creature plist))
 
 (provide 'test-helper)

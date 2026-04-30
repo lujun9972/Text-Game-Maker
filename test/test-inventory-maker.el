@@ -33,28 +33,28 @@
   (let* ((result (build-inventory '(sword "A sharp sword" (weapon) ((attack . 5)))))
          (inv (cdr result)))
     (should (equal (car result) 'sword))
-    (should (equal (member-symbol inv) 'sword))
-    (should (equal (member-description inv) "A sharp sword"))
-    (should (equal (member-type inv) '(weapon)))
-    (should (equal (member-effects inv) '((attack . 5))))))
+    (should (equal (Inventory-symbol inv) 'sword))
+    (should (equal (Inventory-description inv) "A sharp sword"))
+    (should (equal (Inventory-type inv) '(weapon)))
+    (should (equal (Inventory-effects inv) '((attack . 5))))))
 
 ;; --- build-inventorys ---
 
 (ert-deftest test-build-inventorys-from-file ()
   "build-inventorys should read config file and create inventories."
-  (test-with-temp-file "((potion \"Healing potion\" (usable) ((hp . 10)))
-                         (sword \"Sharp sword\" (weapon) ((atk . 5))))"
+  (test-with-temp-file "(potion \"Healing potion\" (usable) ((hp . 10)))
+                         (sword \"Sharp sword\" (weapon) ((atk . 5)))"
     (test-with-globals-saved (inventorys-alist)
       (let ((results (build-inventorys temp-file)))
         (should (= (length results) 2))
-        (should (equal (member-symbol (cdar results)) 'potion))
-        (should (equal (member-symbol (cdadr results)) 'sword))))))
+        (should (equal (Inventory-symbol (cdar results)) 'potion))
+        (should (equal (Inventory-symbol (cdadr results)) 'sword))))))
 
 ;; --- inventorys-init ---
 
 (ert-deftest test-inventorys-init ()
   "inventorys-init should initialize inventorys-alist."
-  (test-with-temp-file "((potion \"A potion\" (usable) ()))"
+  (test-with-temp-file "(potion \"A potion\" (usable) ())"
     (test-with-globals-saved (inventorys-alist)
       (inventorys-init temp-file)
       (should (= (length inventorys-alist) 1))

@@ -1,8 +1,7 @@
-(require 'eieio)
+;;; creature-maker.el --- Creature system for Text-Game-Maker  -*- lexical-binding: t; -*-
+
+(require 'cl-lib)
 (require 'thingatpt)
-(require 'cl)
-(defvar display-fn #'message
-  "显示信息的函数")
 (defvar creatures-alist nil
   "symbol与creature对象的映射")
 
@@ -10,26 +9,28 @@
   "根据symbol获取creature对象"
   (cdr (assoc symbol creatures-alist)))
 
-;; 定义Creature类
-(defclass Creature nil
-  ((symbol :initform (intern (format "creature-%s" (length creatures-alist))) :initarg :symbol :accessor member-symbol :documentation "CREATURE标志")
-   (description :initarg :description :accessor member-description :documentation "CREATURE描述")
-   (occupation :initform 'human :initarg :occupation :accessor member-occupation :documentation "CREATURE的职业")
-   (attr :initform nil :initarg :attr :accessor member-attr :documentation "CREATURE的属性")
-   (inventory :initform nil :initarg :inventory :accessor member-inventory :documentation "CREATURE所只有的物品")
-   (equipment :initform nil :initarg :equipment :accessor member-equipment :documentation "CREATURE装备的装备")
-   (watch-trigger :initform nil :initarg :watch-trigger :accessor member-watch-trigger :documentation "查看该CREATURE后触发的事件")
-   ))
+(cl-defstruct Creature
+  "Creature structure"
+  (symbol nil :documentation "CREATURE标志")
+  (description "" :documentation "CREATURE描述")
+  (occupation 'human :documentation "CREATURE的职业")
+  (attr nil :documentation "CREATURE的属性")
+  (inventory nil :documentation "CREATURE所拥有的物品")
+  (equipment nil :documentation "CREATURE装备的装备")
+  (watch-trigger nil :documentation "查看该CREATURE后触发的事件"))
 
-(defmethod describe ((creature Creature))
+(cl-defmethod describe ((creature Creature))
   "输出creature的描述"
-	(format "这个是%s\n%s\n属性值:%s\n拥有物品:%s\n装备了:%s" (member-symbol creature) (member-description creature) (member-attr creature) (member-inventory creature) (member-equipment creature)))
+  (format "这个是%s\n%s\n属性值:%s\n拥有物品:%s\n装备了:%s"
+          (Creature-symbol creature) (Creature-description creature)
+          (Creature-attr creature) (Creature-inventory creature)
+          (Creature-equipment creature)))
 
 ;; 创建creature列表的方法
 (defun build-creature (creature-entity)
   "根据`text'创建creature,并将creature存入`creatures-alist'中"
   (cl-multiple-value-bind (symbol description attr inventory equipment ) creature-entity
-	(cons symbol (make-instance Creature :symbol symbol :description description :inventory inventory :equipment equipment :attr attr))))
+	(cons symbol (make-Creature :symbol symbol :description description :inventory inventory :equipment equipment :attr attr))))
 
 (defun build-creatures(creature-config-file)
   "根据`creature-config-file'中的配置信息创建各个creature"
@@ -48,35 +49,35 @@
 
 (defun remove-inventory-from-creature (creature inventory)
   ""
-  (setf (member-inventory creature) (remove inventory (member-inventory creature))))
+  (setf (Creature-inventory creature) (remove inventory (Creature-inventory creature))))
 
 (defun add-inventory-to-creature (creature inventory)
   ""
-  (push inventory (member-inventory creature)))
+  (push inventory (Creature-inventory creature)))
 
 (defun inventory-exist-in-creature-p (creature inventory)
   ""
-  (member inventory (member-inventory creature)))
+  (member inventory (Creature-inventory creature)))
 
 (defun remove-equipment-from-creature (creature equipment)
   ""
-  (setf (member-equipment creature) (remove equipment (member-equipment creature))))
+  (setf (Creature-equipment creature) (remove equipment (Creature-equipment creature))))
 
 (defun add-equipment-to-creature (creature equipment)
   ""
-  (push equipment (member-equipment creature)))
+  (push equipment (Creature-equipment creature)))
 
 (defun equipment-exist-in-creature-p (creature equipment)
   ""
-  (member equipment (member-equipment creature)))
+  (member equipment (Creature-equipment creature)))
 
 (defun take-effect-to-creature (creature effect)
   ""
   (let* ((attr-type (car effect))
 		(value (cdr effect)))
-	(if (assoc attr-type (member-attr creature))
-		(incf (cdr (assoc attr-type (member-attr creature))) value)
-	  (push (copy-list effect ) (member-attr creature)))))
+	(if (assoc attr-type (Creature-attr creature))
+		(cl-incf (cdr (assoc attr-type (Creature-attr creature))) value)
+	  (push (cl-copy-list effect ) (Creature-attr creature)))))
 
 (defun take-effects-to-creature(creature effects)
   ""
