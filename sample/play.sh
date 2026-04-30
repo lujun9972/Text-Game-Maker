@@ -5,7 +5,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-emacs --no-init-file --directory "$PROJECT_DIR" \
+emacs --no-init-file -nw --directory "$PROJECT_DIR" \
       --load text-game-maker \
       --load "$SCRIPT_DIR/sample-game.el" \
       --eval "(play-sample-game)"
