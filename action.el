@@ -103,7 +103,7 @@
   (unless (inventory-exist-in-creature-p myself equipment)
 	(throw 'exception (format "未携带%s" equipment)))
   (unless (inventory-wearable-p equipment)
-	(throw 'exception (format "%s不可使用" equipment)))
+	(throw 'exception (format "%s不可装备" equipment)))
   (let ((object (get-inventory-by-symbol equipment)))
 	(when (and (slot-exists-p object 'use-trigger)
 			   (slot-boundp object 'use-trigger)

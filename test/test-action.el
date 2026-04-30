@@ -386,7 +386,7 @@
       (setq myself cr)
       (setq display-fn #'ignore)
       (should (equal (catch 'exception (tg-wear 'potion))
-                     "potion不可使用")))))
+                     "potion不可装备")))))
 
 ;; --- tg-status ---
 
