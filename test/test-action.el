@@ -640,4 +640,111 @@
       ;; Should work same as symbol, damage = max(1, 10-0) = 10, hp: 30-10 = 20
       (should (= (cdr (assoc 'hp (Creature-attr cr))) 20)))))
 
+;; --- tg-upgrade ---
+
+(ert-deftest test-tg-upgrade-allocates-points ()
+  "tg-upgrade should increase target attr and decrease bonus-points."
+  (test-with-globals-saved (tg-valid-actions display-fn creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3) (bonus-points . 3)))))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (tg-upgrade "attack" "2")
+      (should (= (cdr (assoc 'attack (Creature-attr cr))) 7))
+      (should (= (cdr (assoc 'bonus-points (Creature-attr cr))) 1)))))
+
+(ert-deftest test-tg-upgrade-insufficient-points ()
+  "tg-upgrade should throw when not enough bonus-points."
+  (test-with-globals-saved (tg-valid-actions display-fn creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (bonus-points . 1)))))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (should (equal (catch 'exception (tg-upgrade "attack" "3"))
+                     "技能点不足")))))
+
+(ert-deftest test-tg-upgrade-invalid-attr ()
+  "tg-upgrade should throw when attr does not exist."
+  (test-with-globals-saved (tg-valid-actions display-fn creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (bonus-points . 3)))))
+      (setq creatures-alist (list (cons 'hero cr)))
+      (setq myself cr)
+      (should (equal (catch 'exception (tg-upgrade "magic" "1"))
+                     "没有magic属性，无法分配")))))
+
+(ert-deftest test-tg-upgrade-no-bonus-attr ()
+  "tg-upgrade should throw when creature has no bonus-points attr."
+  (test-with-globals-saved (tg-valid-actions display-fn creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let ((cr (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 6)))))
+      (setq creatures-alist (list (cons 'goblin cr)))
+      (setq myself cr)
+      (should (equal (catch 'exception (tg-upgrade "attack" "1"))
+                     "没有bonus-points属性")))))
+
+;; --- tg-attack exp reward ---
+
+(ert-deftest test-tg-attack-gives-exp-on-kill ()
+  "tg-attack should add exp to player when target is killed."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100 250))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
+           (rat (make-Creature :symbol 'rat :description "A rat"
+                               :attr '((hp . 5) (attack . 1) (defense . 0)) :exp-reward 10)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5) (exp . 0) (level . 1) (bonus-points . 0))))
+      (setq creatures-alist (list (cons 'rat rat) (cons 'hero myself)))
+      (tg-attack 'rat)
+      ;; hero should gain 10 exp from killing rat
+      (should (= (cdr (assoc 'exp (Creature-attr myself))) 10)))))
+
+(ert-deftest test-tg-attack-exp-triggers-level-up ()
+  "tg-attack exp gain should trigger level up when threshold reached."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (setq display-fn #'ignore)
+    (setq level-exp-table '(0 100 250))
+    (setq level-up-bonus-points 3)
+    (setq auto-upgrade-attrs '((hp . 5)))
+    (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
+           (rat (make-Creature :symbol 'rat :description "A rat"
+                               :attr '((hp . 5) (attack . 1) (defense . 0)) :exp-reward 150)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :description "The hero"
+                                  :attr '((hp . 100) (attack . 10) (defense . 5) (exp . 0) (level . 1) (bonus-points . 0))))
+      (setq creatures-alist (list (cons 'rat rat) (cons 'hero myself)))
+      (tg-attack 'rat)
+      (should (= (cdr (assoc 'exp (Creature-attr myself))) 150))
+      (should (= (cdr (assoc 'level (Creature-attr myself))) 2))
+      (should (= (cdr (assoc 'hp (Creature-attr myself))) 105))
+      (should (= (cdr (assoc 'bonus-points (Creature-attr myself))) 3)))))
+
 (provide 'test-action)

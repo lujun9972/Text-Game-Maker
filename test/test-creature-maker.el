@@ -159,4 +159,28 @@
          (cr (cdr result)))
     (should (null (Creature-death-trigger cr)))))
 
+;; --- exp-reward slot ---
+
+(ert-deftest test-creature-exp-reward-slot-default-nil ()
+  "Creature exp-reward slot should default to nil."
+  (let ((cr (make-Creature :symbol 'goblin :description "A goblin")))
+    (should (null (Creature-exp-reward cr)))))
+
+(ert-deftest test-creature-exp-reward-slot-set ()
+  "Creature exp-reward slot should be settable."
+  (let ((cr (make-Creature :symbol 'goblin :description "A goblin" :exp-reward 15)))
+    (should (= (Creature-exp-reward cr) 15))))
+
+(ert-deftest test-build-creature-with-exp-reward ()
+  "build-creature should parse 7-element tuple with exp-reward."
+  (let* ((result (build-creature '(goblin "A goblin" ((hp . 25) (attack . 6) (defense . 2)) () () nil 15)))
+         (cr (cdr result)))
+    (should (= (Creature-exp-reward cr) 15))))
+
+(ert-deftest test-build-creature-without-exp-reward ()
+  "build-creature should default exp-reward to nil for 6-element tuple."
+  (let* ((result (build-creature '(goblin "A goblin" ((hp . 25)) () () nil)))
+         (cr (cdr result)))
+    (should (null (Creature-exp-reward cr)))))
+
 (provide 'test-creature-maker)

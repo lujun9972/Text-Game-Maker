@@ -1,12 +1,11 @@
 ;;; action.el --- Game action commands for Text-Game-Maker  -*- lexical-binding: t; -*-
 
-(defvar display-fn #'message
-  "显示信息的函数")
 (defvar tg-valid-actions ()
   "允许执行的命令")
 
 (require 'room-maker)
 (require 'inventory-maker)
+(require 'level-system)
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
@@ -126,7 +125,10 @@
           (remove-creature-from-room current-room target)
           (when-let* ((trig (Creature-death-trigger target-creature)))
             (funcall trig))
-          (tg-display (format "%s被击败了！" target)))
+          (tg-display (format "%s被击败了！" target))
+          (let ((exp-gained (get-exp-reward target-creature)))
+            (tg-display (format "获得 %d 点经验值！" exp-gained))
+            (add-exp-to-creature myself exp-gained)))
       (let* ((counter-damage (max 1 (- target-attack my-defense))))
         (take-effect-to-creature myself (cons 'hp (- counter-damage)))
         (tg-display (format "%s反击，造成 %d 点伤害！" target counter-damage))
@@ -138,6 +140,24 @@
                               (cdr (assoc 'hp (Creature-attr myself)))
                               target
                               (cdr (assoc 'hp (Creature-attr target-creature))))))))))
+
+(tg-defaction tg-upgrade (attr points)
+  "使用'upgrade <属性> <点数>'消耗技能点提升指定属性"
+  (when (stringp attr)
+    (setq attr (intern attr)))
+  (unless (assoc 'bonus-points (Creature-attr myself))
+    (throw 'exception "没有bonus-points属性"))
+  (unless (assoc attr (Creature-attr myself))
+    (throw 'exception (format "没有%s属性，无法分配" attr)))
+  (let ((pts (string-to-number (or points "0")))
+        (available (cdr (assoc 'bonus-points (Creature-attr myself)))))
+    (unless (> pts 0)
+      (throw 'exception "请输入有效的点数"))
+    (unless (>= available pts)
+      (throw 'exception "技能点不足"))
+    (cl-incf (cdr (assoc attr (Creature-attr myself))) pts)
+    (cl-decf (cdr (assoc 'bonus-points (Creature-attr myself))) pts)
+    (tg-display (format "分配 %d 点到 %s，剩余技能点: %d" pts attr (cdr (assoc 'bonus-points (Creature-attr myself)))))))
 
 (tg-defaction tg-status(&optional useless)
   "使用'status'查看自己的状态"

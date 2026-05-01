@@ -1,0 +1,582 @@
+#+TITLE: Text-Game-Maker 使用手册
+#+AUTHOR: DarkSun
+#+DATE: 2026-05-01
+#+OPTIONS: ^:{}
+#+LANGUAGE: cn
+
+* 简介
+
+Text-Game-Maker 是一款基于 Emacs Lisp 的文本游戏制作工具，功能仿照 RPG Maker。
+它提供了完整的游戏框架，包括房间地图、物品系统、生物系统、战斗系统和升级系统。
+
+** 特性
+
+- 基于 EIEIO / cl-defstruct 的面向对象设计，包含 Room、Inventory、Creature 三大核心类
+- 房间系统：支持房间描述、物品、生物、进出触发事件
+- 地图系统：通过文本配置文件定义二维地图，支持上下左右导航
+- 物品系统：支持 usable（消耗品）和 wearable（装备）两种类型，可配置使用效果
+- 生物系统：支持属性管理、物品携带、装备穿戴
+- 战斗系统：支持攻击、反击、击败触发事件
+- 升级系统：经验值、等级、技能点分配
+- 触发器系统：为房间、物品、生物提供丰富的触发事件机制
+- 自定义 major mode（=tg-mode=）：提供交互式游戏命令行界面，支持 eldoc
+- 可扩展的 action 系统：通过 =tg-defaction= 宏轻松定义新的游戏命令
+- 配置文件生成器：通过交互界面生成配置文件
+
+* 安装
+
+** 依赖
+
+- Emacs 24+（需要内置 EIEIO 库）
+- 内置依赖：=eieio=, =thingatpt=, =cl-lib=
+
+** 安装步骤
+
+1. 将项目目录克隆到本地：
+   #+begin_src sh
+   git clone <repository-url> ~/myLisp/Text-Game-Maker
+   #+end_src
+
+2. 在 Emacs 配置中添加：
+   #+begin_src elisp
+   (add-to-list 'load-path "~/myLisp/Text-Game-Maker")
+   (require 'text-game-maker)
+   #+end_src
+
+* 快速入门
+
+项目自带了示例游戏（地牢冒险），可以直接运行体验。
+
+** 启动示例游戏
+
+使用项目中的启动脚本：
+
+#+begin_src sh
+bash sample/play.sh
+#+end_src
+
+该脚本以终端模式启动 Emacs，加载 Text-Game-Maker 并自动进入示例游戏。
+
+手动加载方式：
+
+#+begin_src elisp
+M-x eval-buffer  ; 评估 sample-game.el
+M-x play-sample-game
+#+end_src
+
+** 示例游戏内容
+
+示例游戏包含 6 个房间、16 种物品、11 种生物，目标是探索地牢、收集装备、击败骷髅王。
+
+* 核心概念
+
+** Room（房间）
+
+房间是游戏地图的基本单元。每个房间有：
+- =symbol=：唯一标识符
+- =description=：房间描述文本
+- =inventory=：房间中的物品列表
+- =creature=：房间中的生物列表
+- =in-trigger=：进入房间时触发的事件
+- =out-trigger=：离开房间时触发的事件
+
+** Inventory（物品）
+
+物品分两种类型：
+- =usable=（消耗品）：使用后消耗，如药水、食物。可附加属性效果
+- =wearable=（装备）：可穿戴增加属性，如剑、盾
+
+每个物品有：
+- =symbol=：唯一标识符
+- =description=：物品描述
+- =type=：物品类型（=usable= 或 =wearable=）
+- =effects=：使用/穿戴时对生物属性的影响
+- =trigger=：触发事件（=take-trigger=, =drop-trigger=, =use-trigger=, =wear-trigger=, =watch-trigger=）
+
+** Creature（生物）
+
+生物是游戏中可交互的实体。每个生物有：
+- =symbol=：唯一标识符
+- =description=：生物描述
+- =attr=：属性 alist，如 =((hp . 100) (attack . 5) (defense . 3))=
+- =inventory=：携带的物品列表
+- =equipment=：装备的物品列表
+- =watch-trigger=：查看时触发的事件
+- =death-trigger=：被击败时触发的事件
+- =exp-reward=：击败后获得的经验值（nil 时自动按属性计算）
+
+玩家自身是特殊的 Creature（=myself=），额外管理 =exp=, =level=, =bonus-points= 属性。
+
+** 触发器系统
+
+触发器是 Text-Game-Maker 的事件机制，在特定动作发生时自动调用：
+
+| 触发器            | 所属对象  | 触发时机               |
+|-------------------+-----------+------------------------|
+| =in-trigger=      | Room      | 进入房间时             |
+| =out-trigger=     | Room      | 离开房间时             |
+| =take-trigger=    | Inventory | 捡起物品时             |
+| =drop-trigger=    | Inventory | 丢弃物品时             |
+| =use-trigger=     | Inventory | 使用物品时             |
+| =wear-trigger=    | Inventory | 装备物品时             |
+| =watch-trigger=   | Creature  | 查看生物时             |
+| =watch-trigger=   | Inventory | 查看物品时             |
+| =death-trigger=   | Creature  | 生物被击败时           |
+
+* 配置文件格式
+
+所有配置文件不需要外层括号，每行一个列表，系统会自动包装为列表处理。
+
+** 房间配置（=room-config.el=）
+
+每个房间一行，格式：
+
+#+begin_src elisp
+(<symbol> "<description>" (<item-symbol>...) (<creature-symbol>...))
+#+end_src
+
+示例：
+
+#+begin_src elisp
+(entrance "地牢入口。石门缓缓关闭。" (torch rusty-key) (guard))
+(hall "宏伟的大厅。" (map potion gold) (goblin bat))
+#+end_src
+
+** 地图配置（=map-config.el=）
+
+二维文本网格，每个符号对应房间的 =symbol=：
+
+#+begin_src example
+entrance  hall
+cell      corridor
+#+end_src
+
+- 相邻关系决定可移动方向（上下左右）
+- 空白位置表示无房间
+
+** 物品配置（=inventory-config.el=）
+
+每个物品一行，格式：
+
+#+begin_src elisp
+(<symbol> "<description>" <type> (<effect>...))
+#+end_src
+
+- =type=：=usable=（消耗品）或 =wearable=（装备）
+- =effects=：属性影响列表，如 =((hp . 30) (attack . 2))=
+
+示例：
+
+#+begin_src elisp
+(potion "一瓶红色药水" usable ((hp . 30)))
+(iron-sword "一把铁剑" wearable ((attack . 5)))
+(shield "一面铁盾" wearable ((defense . 5)))
+#+end_src
+
+** 生物配置（=creature-config.el=）
+
+每个生物一行，格式：
+
+#+begin_src elisp
+(<symbol> "<description>" (<attr>...) (<inventory>...) (<equipment>...) <death-trigger> <exp-reward>)
+#+end_src
+
+- =attr=：属性 alist，如 =((hp . 100) (attack . 5) (defense . 3))=
+- 玩家需额外包含 =exp=, =level=, =bonus-points= 属性
+- =exp-reward=：击败后获得经验值，nil 时自动按 hp+attack+defense 计算
+
+示例：
+
+#+begin_src elisp
+(hero "勇敢的冒险者" ((hp . 100) (attack . 5) (defense . 3) (exp . 0) (level . 1) (bonus-points . 0)) () () nil 0)
+(goblin "狡猾的哥布林" ((hp . 25) (attack . 6) (defense . 2)) () () nil 18)
+#+end_src
+
+** 升级配置（=level-config.el=）
+
+#+begin_src elisp
+(level-exp-table 0 50 120 220 350 500 700 950 1300 1700)
+(level-up-bonus-points 3)
+(auto-upgrade-attrs ((hp . 10)))
+#+end_src
+
+- =level-exp-table=：每级所需累计经验值列表
+- =level-up-bonus-points=：每次升级获得的可分配技能点数
+- =auto-upgrade-attrs=：升级时自动提升的属性（不消耗技能点）
+
+* 启动游戏
+
+在加载所有配置后，调用 =tg-mode= 进入游戏：
+
+#+begin_src elisp
+(let ((dir "/path/to/config/"))
+  (map-init (expand-file-name "room-config.el" dir)
+            (expand-file-name "map-config.el" dir))
+  (inventorys-init (expand-file-name "inventory-config.el" dir))
+  (creatures-init (expand-file-name "creature-config.el" dir))
+  (tg-mode))
+#+end_src
+
+如有升级系统，额外调用：
+
+#+begin_src elisp
+  (level-init (expand-file-name "level-config.el" dir))
+#+end_src
+
+启动后会自动显示房间信息和 =[room]> 提示符，等待用户输入命令。
+
+* 游戏命令
+
+** 命令列表
+
+| 命令                     | 说明                           |
+|--------------------------+--------------------------------|
+| =move <方向>=            | 向指定方向移动                    |
+| =watch=                  | 查看当前环境                     |
+| =watch <物品/生物>=      | 查看指定物品或生物               |
+| =take <物品>=            | 捡起房间中的物品                 |
+| =drop <物品>=            | 丢弃身上的物品                   |
+| =use <物品>=             | 使用消耗品                       |
+| =wear <物品>=            | 装备物品                         |
+| =attack <目标>=          | 攻击房间中的生物                 |
+| =status=                 | 查看自身状态                     |
+| =upgrade <属性> <点数>=  | 消耗技能点提升属性               |
+| =help=                   | 查看所有命令说明                 |
+| =help <命令>=            | 查看指定命令说明                 |
+| =quit=                   | 退出游戏                         |
+
+** 移动方向
+
+=move= 命令支持四个方向：
+
+- =move up= — 向上
+- =move right= — 向右
+- =move down= — 向下
+- =move left= — 向左
+
+** 升级命令
+
+=upgrade= 命令消耗技能点提升指定属性：
+
+#+begin_src example
+> upgrade attack 2
+分配 2 点到 attack，剩余技能点: 1
+#+end_src
+
+- 必须有足够的 =bonus-points=
+- 属性必须已存在
+
+* 升级系统
+
+** 经验获取
+
+击败怪物可获得经验值。经验值有两种计算方式：
+
+1. 显式指定：在生物配置中设置 =exp-reward= 字段
+2. 自动计算：未设置时按 =hp + attack + defense= 计算
+
+** 升级流程
+
+当累积经验值达到等级表阈值时自动升级：
+
+1. 等级 +1
+2. 自动提升属性（如 hp +10）
+3. 获得技能点（如 3 点）
+4. 显示升级消息
+
+升级表的索引 0 对应 1→2 级所需经验，索引 1 对应 2→3 级，依此类推。达到最高等级后不再升级。
+
+** 技能点分配
+
+使用 =upgrade <属性> <点数>= 将技能点分配到已有属性上。合理分配技能点是通关的关键——建议先提升 =attack= 和 =defense=。
+
+* API 参考
+
+** =text-game-maker.el= — 主入口
+
+| 函数/变量       | 说明                                    |
+|-----------------+-----------------------------------------|
+| =display-fn=    | 显示函数，默认 =tg-mprinc=（输出到 buffer） |
+| =tg-display=    | 向游戏 buffer 输出文本                    |
+| =file-content=  | 读取文件内容                              |
+
+加载 =text-game-maker= 会自动加载所有子模块。
+
+** =room-maker.el= — 房间与地图
+
+| 函数/变量               | 说明                                    |
+|--------------------------+-----------------------------------------|
+| =Room=                   | 房间结构体                                |
+| =rooms-alist=            | 所有房间的 alist                          |
+| =room-map=               | 二维地图                                  |
+| =current-room=           | 当前所在房间                              |
+| =map-init=               | 加载房间配置和地图配置                     |
+| =get-room-by-symbol=     | 根据 symbol 获取房间对象                   |
+| =beyond-rooms=           | 获取指定方向可到达的房间                    |
+| =read-from-whole-string= | 从字符串读取 Emacs Lisp 数据（工具函数）    |
+
+Room 结构体：
+
+| Slot           | 说明                     |
+|----------------+--------------------------|
+| =symbol=       | 房间标识符                |
+| =description=  | 房间描述                  |
+| =inventory=    | 物品列表                  |
+| =creature=     | 生物列表                  |
+| =in-trigger=   | 进入触发                  |
+| =out-trigger=  | 离开触发                  |
+| =watch-trigger=| 查看触发                  |
+
+** =inventory-maker.el= — 物品系统
+
+| 函数/变量                    | 说明                       |
+|------------------------------+----------------------------|
+| =Inventory=                  | 物品结构体                  |
+| =inventorys-alist=           | 所有物品的 alist            |
+| =inventorys-init=            | 加载物品配置                |
+| =get-inventory-by-symbol=    | 根据 symbol 获取物品对象    |
+| =inventory-usable-p=         | 判断是否为消耗品            |
+| =inventory-wearable-p=       | 判断是否为装备              |
+| =inventory-exist-in-room-p=  | 检查物品是否在房间中        |
+| =add-inventory-to-room=      | 向房间添加物品              |
+| =remove-inventory-from-room= | 从房间移除物品              |
+
+Inventory 结构体：
+
+| Slot              | 说明                     |
+|-------------------+--------------------------|
+| =symbol=          | 物品标识符                |
+| =description=     | 物品描述                  |
+| =type=            | 类型列表（=usable= / =wearable=） |
+| =effects=         | 效果 alist                |
+| =take-trigger=    | 捡起触发                  |
+| =drop-trigger=    | 丢弃触发                  |
+| =use-trigger=     | 使用触发                  |
+| =wear-trigger=    | 装备触发                  |
+| =watch-trigger=   | 查看触发                  |
+
+** =creature-maker.el= — 生物系统
+
+| 函数/变量                         | 说明                       |
+|-----------------------------------+----------------------------|
+| =Creature=                        | 生物结构体                  |
+| =creatures-alist=                 | 所有生物的 alist            |
+| =myself=                          | 玩家自己                    |
+| =creatures-init=                  | 加载生物配置                |
+| =get-creature-by-symbol=          | 根据 symbol 获取生物对象    |
+| =creature-exist-in-room-p=        | 检查生物是否在房间中        |
+| =take-effect-to-creature=         | 对生物施加属性效果          |
+| =take-effects-to-creature=        | 批量施加效果                |
+| =add-inventory-to-creature=       | 给生物添加物品              |
+| =remove-inventory-from-creature=  | 从生物移除物品              |
+| =add-equipment-to-creature=       | 给生物装备物品              |
+| =remove-equipment-from-creature=  | 从生物卸下装备              |
+| =inventory-exist-in-creature-p=   | 检查生物是否携带某物品      |
+| =equipment-exist-in-creature-p=   | 检查生物是否装备某物品      |
+| =remove-creature-from-room=       | 从房间移除生物              |
+
+Creature 结构体：
+
+| Slot              | 说明                     |
+|-------------------+--------------------------|
+| =symbol=          | 生物标识符                |
+| =description=     | 生物描述                  |
+| =occupation=      | 职业                      |
+| =attr=            | 属性 alist                |
+| =inventory=       | 携带物品列表              |
+| =equipment=       | 装备物品列表              |
+| =watch-trigger=   | 查看触发                  |
+| =death-trigger=   | 击败触发                  |
+| =exp-reward=      | 经验奖励                  |
+
+** =level-system.el= — 升级系统
+
+| 函数/变量                        | 说明                       |
+|----------------------------------+----------------------------|
+| =level-exp-table=                | 等级经验表                  |
+| =level-up-bonus-points=          | 每次升级获得技能点数        |
+| =auto-upgrade-attrs=             | 自动提升属性列表            |
+| =level-init=                     | 加载升级配置                |
+| =add-exp-to-creature=            | 给生物加经验并处理升级      |
+| =get-exp-reward=                 | 获取生物的经验奖励          |
+
+** =tg-mode.el= — 游戏主模式
+
+| 函数/变量               | 说明                                    |
+|--------------------------+-----------------------------------------|
+| =tg-mode=                | 游戏 major mode                          |
+| =tg-parse=               | 命令解析函数（绑定到 RET 键）             |
+| =tg-messages=            | 游戏消息循环                              |
+| =tg-mprinc=              | 向 buffer 输出文本                        |
+| =tg-prompt-string=       | 返回当前提示符字符串（=[ROOM]>=）         |
+| =tg-eldoc-function=      | eldoc 支持函数（输入时显示命令说明）       |
+| =tg-over-p=              | 游戏是否结束                              |
+| =tg-fix-screen=          | 保持屏幕滚动位置                          |
+
+=major-mode= 特性：
+- 读取提示符 =[symbol]>= 或 =>= 后的命令
+- 提示符文本不可编辑（=read-only= 属性）
+- 支持 eldoc 模式，输入命令时显示文档
+- 按 RET 执行命令
+
+** =action.el= — 游戏命令
+
+| 函数/变量               | 说明                                    |
+|--------------------------+-----------------------------------------|
+| =tg-valid-actions=       | 已注册的所有命令列表                      |
+| =tg-defaction=           | 定义新命令的宏（见"扩展"章节）            |
+
+内置命令：=tg-move=, =tg-watch=, =tg-take=, =tg-drop=, =tg-use=, =tg-wear=, =tg-attack=, =tg-upgrade=, =tg-status=, =tg-help=, =tg-quit=
+
+** =tg-config-generator.el= — 配置文件生成器
+
+| 函数/模式                       | 说明                           |
+|---------------------------------+--------------------------------|
+| =tg-gen-config-mode=            | 配置文件编辑 major mode          |
+| =tg-gen-preview-room=           | 预览房间配置                    |
+| =tg-gen-preview-inventory=      | 预览物品配置                    |
+| =tg-gen-preview-creature=       | 预览生物配置                    |
+| =tg-gen-preview-map=            | 预览地图配置                    |
+| =tg-gen-config-submit=          | 提交并保存配置                  |
+
+配置块格式：用 =##= 分隔，每块包含 =key: value= 对。
+
+* 扩展
+
+** 使用 =tg-defaction= 定义新命令
+
+=tg-defaction= 宏是扩展游戏命令的标准方式，同时注册命令到 =tg-valid-actions= 列表。
+
+语法：
+
+#+begin_src elisp
+(tg-defaction tg-<命令名> (<参数>...)
+  "<使用说明>"
+   ;; 命令代码
+   )
+#+end_src
+
+参数说明：
+- 第一个参数是 =interactive= 规范中的字符串参数
+- 返回值会被 =tg-display= 输出到游戏 buffer
+- 使用 =(throw 'exception "错误信息")= 返回错误
+
+示例——添加搜索命令：
+
+#+begin_src elisp
+(tg-defaction tg-search (&optional target)
+  "使用'search'搜索房间
+使用'search <物品>'搜索指定物品"
+  (if target
+      (format "你仔细搜索了房间，但没有找到%s" target)
+    "你搜索了房间，但没有发现任何特别的东西"))
+#+end_src
+
+** 触发器的使用
+
+触发器是 lambda 函数，在配置中的 =trigger= 字段设置。
+
+使用闭包访问外部变量：
+
+#+begin_src elisp
+;; 物品拾起触发：获得钥匙时提升攻击力
+(let ((my-key (make-Inventory :symbol 'magic-key :description "魔法钥匙"
+                 :type '(usable) :effects '((attack . 3))
+                 :take-trigger (lambda ()
+                                 (tg-display "你捡起了魔法钥匙，感到一股力量涌入！")))))
+  ...)
+#+end_src
+
+* 文件结构
+
+| 文件                       | 说明                         |
+|----------------------------+------------------------------|
+| =text-game-maker.el=       | 主入口文件，加载所有模块      |
+| =tg-mode.el=               | 游戏主模式，命令解析与界面    |
+| =room-maker.el=            | 房间与地图系统               |
+| =inventory-maker.el=       | 物品系统                     |
+| =creature-maker.el=        | 生物系统                     |
+| =action.el=                | 游戏命令定义                 |
+| =level-system.el=          | 升级系统                     |
+| =tg-config-generator.el=   | 配置文件生成器               |
+| =sample/=                  | 示例游戏目录                 |
+| =test/=                    | ERT 单元测试目录             |
+| =run-tests.sh=             | 测试运行脚本                 |
+
+* 测试
+
+项目包含 163+ 个 ERT 单元测试，覆盖所有核心模块。
+
+运行测试：
+
+#+begin_src sh
+bash run-tests.sh
+#+end_src
+
+或直接使用 Emacs：
+
+#+begin_src sh
+emacs --batch -L . -L test \
+      --eval "(ert-run-tests-batch-and-exit t)"
+#+end_src
+
+测试文件说明：
+
+| 测试文件                         | 测试数量 | 覆盖内容                           |
+|---------------------------------+----------+------------------------------------|
+| =test-text-game-maker.el=       |        5 | =file-content=, =tg-display=       |
+| =test-room-maker.el=            |       22 | Room 类, 地图操作, =beyond-rooms=  |
+| =test-inventory-maker.el=       |       16 | Inventory 类, 类型检查             |
+| =test-creature-maker.el=        |       22 | Creature 类, 效果系统, 装备操作    |
+| =test-action.el=                |       34 | =tg-defaction= 宏, 全部游戏命令    |
+| =test-tg-mode.el=               |       18 | =tg-mprinc=, =tg-mode=, =tg-parse=, =tg-messages=, =display-fn=, eldoc |
+| =test-tg-config-generator.el=   |       24 | 配置解析与生成                     |
+| =test-level-system.el=          |        9 | 等级加载, 经验计算, 升级触发       |
+
+* 常见问题
+
+** 启动时 buffer 中没有输出？
+
+确认 =display-fn= 没有被修改为 =message=。默认值是 =#'tg-mprinc=，输出到游戏 buffer。
+
+** 无法在提示符后输入？
+
+检查 =[ROOM]>= 提示符是否被删除。提示符有 =read-only= 属性保护，不应被删除。
+如果仍无法输入，确认 =rear-nonsticky= 属性设置正确。
+
+** 升级后技能点没有增加？
+
+确认 =creature-config.el= 中玩家（=hero=）的 =attr= 包含 =(bonus-points . 0)=。
+升级系统只在有 =bonus-points= 属性的生物上增加技能点。
+
+** =load-file-name= 错误？
+
+通过 =--eval= 启动时 =load-file-name= 为 nil。捕获路径的推荐方式：
+
+#+begin_src elisp
+(defvar my-game-dir nil)
+(setq my-game-dir (file-name-directory (or load-file-name buffer-file-name)))
+#+end_src
+
+* 更新日志
+
+** [2026-05-01] 升级系统
+
+- 新增 =level-system.el= 升级模块
+- 新增升级配置文件 =level-config.el=
+- Creature 新增 =exp-reward= 字段
+- 新增 =attack= 击败后获得经验值机制
+- 新增 =upgrade= 技能点分配命令
+- 新增 9 个升级系统测试
+
+** [2026-04-30] Bug 修复与测试覆盖
+
+- 新增 95 个 ERT 单元测试，覆盖所有模块
+- 修复 =remove-equipment-from-creature= 修改错误 slot 的 bug
+- 修复 =tg-wear= 中 =creature= 变量未绑定的 bug
+- 修复 =tg-wear= 检查 equipment 而非 inventory 的 bug
+- 修复 =tg-wear= 错误信息"不可使用"应为"不可装备"
+- 修复 =tg-wear= 触发 =use-trigger= 而非 =wear-trigger= 的 bug
+- 修复 =tg-watch= 无法查看 creature 的 bug
+- 修复所有模块缺少的 =require= 依赖声明
+- 移除 =action.el= 中硬编码的 load-path

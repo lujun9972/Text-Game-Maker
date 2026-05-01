@@ -15,8 +15,11 @@
   (if tg-over-p
 	  (text-mode)
 	(tg-fix-screen)
-	(tg-mprinc (tg-prompt-string) 'no-newline)
-	(message "point-max=%s" (point-max))
+	(let ((start (point))
+		  (inhibit-read-only t))
+	  (tg-mprinc (tg-prompt-string) 'no-newline)
+	  (put-text-property start (point) 'read-only t)
+	  (put-text-property (1- (point)) (point) 'rear-nonsticky '(read-only)))
 	(goto-char (point-max))))
 
 
@@ -89,7 +92,6 @@
         (setq prompt-end (search-backward ">" (line-beginning-position) t)))
       (when prompt-end
         (setq line (downcase (buffer-substring (1+ prompt-end) (point))))
-        (princ line)
         (tg-mprinc "\n")
         (let (action-result action things)
 	      (setq action-result (catch 'exception
@@ -98,7 +100,7 @@
 								(setq action (intern (format "tg-%s" action)))
 								(unless (member action tg-valid-actions)
 									(throw 'exception "未知的命令"))
-								  (apply action things)))
+									  (apply action things)))
 	      (when action-result
 	        (tg-mprinc action-result))))))
   (goto-char (point-max))

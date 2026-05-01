@@ -15,6 +15,7 @@
 (require 'creature-maker)
 (require 'action)
 (require 'tg-config-generator)
+(require 'level-system)
 
 
 (provide 'text-game-maker)

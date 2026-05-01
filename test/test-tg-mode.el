@@ -130,6 +130,69 @@
       (let ((output (catch 'exception (tg-parse 1))))
         (should-not (stringp output))))))
 
+;; --- tg-messages prompt read-only ---
+
+(ert-deftest test-tg-messages-prompt-is-read-only ()
+  "tg-messages should insert prompt with read-only text property."
+  (test-with-globals-saved (tg-over-p)
+    (setq tg-over-p nil)
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (let ((prompt-start (point-min))
+            (prompt-end (1- (point-max))))
+        ;; The prompt text should have read-only property
+        (should (get-text-property prompt-start 'read-only))))))
+
+(ert-deftest test-tg-messages-room-prompt-is-read-only ()
+  "tg-messages prompt should be read-only when current-room is set."
+  (test-with-globals-saved (tg-over-p current-room rooms-alist room-map)
+    (setq tg-over-p nil)
+    (setq current-room (make-Room :symbol 'dungeon :description "A dark dungeon"))
+    (setq rooms-alist (list (cons 'dungeon current-room)))
+    (setq room-map '((dungeon)))
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (let ((prompt-start (point-min)))
+        (should (get-text-property prompt-start 'read-only))
+        ;; Verify the prompt contains the room name
+        (should (string-match-p "\\[dungeon\\]>" (buffer-string)))))))
+
+(ert-deftest test-tg-messages-prompt-text-not-modifiable ()
+  "Prompt text should not be modifiable (text-property test)."
+  (test-with-globals-saved (tg-over-p)
+    (setq tg-over-p nil)
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      ;; Verify prompt area has read-only
+      (goto-char (point-min))
+      (should (get-text-property (point) 'read-only))
+      ;; All prompt chars up to point-max are read-only
+      (should (get-text-property (1- (point-max)) 'read-only))
+      ;; After user types (bypassing read-only), new text should NOT be read-only
+      (goto-char (point-max))
+      (let ((inhibit-read-only t))
+        (insert "test input"))
+      (should-not (get-text-property (1- (point)) 'read-only)))))
+
+(ert-deftest test-tg-messages-game-over-switches-mode ()
+  "tg-messages should switch to text-mode when game is over."
+  (test-with-globals-saved (tg-over-p)
+    (setq tg-over-p t)
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (should (equal major-mode 'text-mode)))))
+
+;; --- display-fn ---
+
+(ert-deftest test-display-fn-is-tg-mprinc ()
+  "display-fn should be tg-mprinc, not message."
+  (require 'text-game-maker)
+  (should (eq display-fn #'tg-mprinc)))
+
 ;; --- tg-eldoc-function ---
 
 (ert-deftest test-tg-eldoc-exact-command ()
@@ -200,5 +263,75 @@
       (goto-char (point-max))
       (should (string= (tg-eldoc-function)
                        (documentation 'tg-help))))))
+
+;; --- prompt rear-nonsticky ---
+
+(ert-deftest test-tg-messages-prompt-rear-nonsticky ()
+  "Last char of prompt should have rear-nonsticky containing read-only."
+  (test-with-globals-saved (tg-over-p)
+    (setq tg-over-p nil)
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (let ((last-pos (1- (point-max))))
+        (should (member 'read-only (get-text-property last-pos 'rear-nonsticky)))))))
+
+(ert-deftest test-tg-messages-can-type-after-prompt ()
+  "User should be able to insert text after prompt without inhibit-read-only."
+  (test-with-globals-saved (tg-over-p)
+    (setq tg-over-p nil)
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (goto-char (point-max))
+      ;; This insert should NOT signal text-read-only
+      (insert "hello")
+      (should (equal (buffer-substring-no-properties (point-max) (- (point-max) 5)) "hello")))))
+
+(ert-deftest test-tg-messages-consecutive-calls-preserve-read-only ()
+  "Multiple tg-messages calls should keep all prompts read-only."
+  (test-with-globals-saved (tg-over-p current-room rooms-alist room-map)
+    (setq tg-over-p nil)
+    (setq current-room (make-Room :symbol 'hall :description "A hall"))
+    (setq rooms-alist (list (cons 'hall current-room)))
+    (setq room-map '((hall)))
+    (with-temp-buffer
+      (tg-mode)
+      (tg-messages)
+      (goto-char (point-max))
+      (insert "test")
+      (tg-messages)
+      ;; Both prompt areas should be read-only
+      (should (get-text-property (point-min) 'read-only))
+      ;; Find second prompt: search for the second "[hall]>"
+      (goto-char (point-min))
+      (search-forward "[hall]>" nil t 2)
+      (should (get-text-property (match-beginning 0) 'read-only)))))
+
+(ert-deftest test-tg-parse-new-prompt-is-read-only ()
+  "After tg-parse processes a command, the new prompt should be read-only."
+  (test-with-globals-saved (tg-valid-actions tg-over-p)
+    (setq tg-valid-actions '(tg-help))
+    (setq tg-over-p nil)
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">help\n")
+      (goto-char (point-max))
+      (forward-line -1)
+      (tg-parse 1)
+      ;; After parse, a new prompt should be inserted and read-only
+      (goto-char (point-max))
+      (let ((pos (1- (point))))
+        ;; Find the last '>' which is the end of the new prompt
+        (should (search-backward ">" nil t))
+        (should (get-text-property (point) 'read-only))))))
+
+;; --- action.el display-fn ---
+
+(ert-deftest test-action-el-not-redefining-display-fn ()
+  "action.el should not have its own defvar for display-fn."
+  (with-temp-buffer
+    (insert-file-contents "action.el")
+    (should-not (string-match-p "defvar display-fn" (buffer-string)))))
 
 (provide 'test-tg-mode)
