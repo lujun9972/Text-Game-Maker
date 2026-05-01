@@ -22,4 +22,5 @@ emacs --batch --no-site-file --no-init-file \
     (require 'test-npc-behavior)
     (require 'test-save-system)
     (require 'test-quest-system)
+    (require 'test-dialog-system)
     (ert-run-tests-batch-and-exit '(or \"test-\" t)))"

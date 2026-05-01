@@ -19,6 +19,7 @@
 (require 'npc-behavior)
 (require 'save-system)
 (require 'quest-system)
+(require 'dialog-system)
 
 
 (provide 'text-game-maker)
