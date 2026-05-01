@@ -2,6 +2,7 @@
 
 (require 'action)
 (require 'npc-behavior)
+(require 'dialog-system)
 
 (defvar tg-over-p nil
   "游戏是否结束")
@@ -88,23 +89,26 @@
     (end-of-line)
     (when (and (not (= line-start (point)))
                (not (< (point) line-start)))
-      ;; Find the last '>' on this line to locate end of prompt
       (save-excursion
         (setq prompt-end (search-backward ">" (line-beginning-position) t)))
       (when prompt-end
         (setq line (downcase (buffer-substring (1+ prompt-end) (point))))
         (tg-mprinc "\n")
-        (let (action-result action things)
-	      (setq action-result (catch 'exception
-							    (setq action (car (split-string line)))
-							    (setq things (cdr (split-string line)))
-								(setq action (intern (format "tg-%s" action)))
-								(unless (member action tg-valid-actions)
-									(throw 'exception "未知的命令"))
-									  (apply action things)))
-	      (when action-result
-	        (tg-mprinc action-result))
-	      (npc-run-behaviors)))))
+        (if dialog-pending
+            (progn
+              (dialog-handle-choice line)
+              (npc-run-behaviors))
+          (let (action-result action things)
+            (setq action-result (catch 'exception
+                                  (setq action (car (split-string line)))
+                                  (setq things (cdr (split-string line)))
+                                  (setq action (intern (format "tg-%s" action)))
+                                  (unless (member action tg-valid-actions)
+                                    (throw 'exception "未知的命令"))
+                                  (apply action things)))
+            (when action-result
+              (tg-mprinc action-result))
+            (npc-run-behaviors))))))
   (goto-char (point-max))
   (tg-mprinc "\n")
   (tg-messages))

@@ -8,6 +8,7 @@
 (require 'level-system)
 (require 'npc-behavior)
 (require 'quest-system)
+(require 'dialog-system)
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
@@ -180,6 +181,14 @@
     (when (stringp action)
       (setq action (intern (format "tg-%s" action))))
     (tg-display (documentation action))))
+(tg-defaction tg-talk (npc-name)
+  "使用'talk <NPC>'与NPC对话"
+  (when (stringp npc-name)
+    (setq npc-name (intern npc-name)))
+  (unless (creature-exist-in-room-p current-room npc-name)
+    (throw 'exception (format "房间中没有%s" npc-name)))
+  (dialog-start npc-name))
+
 (tg-defaction tg-quests ()
   "使用'quests'查看当前任务列表"
   (tg-display "=== 任务列表 ===")

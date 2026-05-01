@@ -886,4 +886,42 @@
       (tg-quests)
       (should (cl-some (lambda (s) (string-match-p "Test quest" s)) (mapcar #'car output))))))
 
+;; --- tg-talk command ---
+
+(ert-deftest test-tg-talk-starts-dialog ()
+  "tg-talk should start dialog with NPC in room."
+  (test-with-globals-saved (tg-valid-actions display-fn rooms-alist room-map current-room
+                              creatures-alist dialogs-alist dialog-pending)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "Room" :creature '(guard)))
+           (guard-cr (make-Creature :symbol 'guard :description "Guard" :attr '((hp . 50))))
+           (opt (make-DialogOption :text "Hi" :response "Hello" :condition nil))
+           (dialog (make-Dialog :npc 'guard :greeting "What?" :options (list opt)))
+           (output nil))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq creatures-alist (list (cons 'guard guard-cr)))
+      (setq dialogs-alist (list (cons 'guard dialog)))
+      (tg-talk 'guard)
+      (should (eq dialog-pending dialog))
+      (should (cl-some (lambda (s) (string-match-p "What?" s)) (mapcar #'car output))))))
+
+(ert-deftest test-tg-talk-npc-not-in-room ()
+  "tg-talk should throw when NPC is not in room."
+  (test-with-globals-saved (tg-valid-actions display-fn rooms-alist room-map current-room
+                              creatures-alist dialogs-alist dialog-pending)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "Room" :creature nil))
+           (output nil))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq creatures-alist nil)
+      (setq dialogs-alist nil)
+      (let ((result (catch 'exception (tg-talk 'nobody))))
+        (should (string-match-p "没有" result))))))
+
 (provide 'test-action)
