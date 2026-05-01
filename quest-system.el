@@ -1,0 +1,109 @@
+;;; quest-system.el --- Quest system for Text-Game-Maker  -*- lexical-binding: t; -*-
+
+(require 'cl-lib)
+(require 'room-maker)
+(require 'creature-maker)
+(require 'level-system)
+
+(defvar quests-alist nil
+  "symbol到Quest对象的映射")
+
+(cl-defstruct Quest
+  "Quest structure"
+  (symbol nil :documentation "任务唯一标识符")
+  (description "" :documentation "任务描述")
+  (type nil :documentation "任务类型: kill/collect/explore/talk")
+  (target nil :documentation "任务目标 symbol")
+  (count 1 :documentation "目标数量")
+  (progress 0 :documentation "当前进度")
+  (rewards nil :documentation "奖励列表")
+  (status 'inactive :documentation "任务状态: inactive/active/completed/failed")
+  (description-complete "" :documentation "完成时的提示文本"))
+
+;; --- Config loading ---
+
+(defun build-quest (quest-entity)
+  "根据quest-entity创建Quest对象."
+  (cl-multiple-value-bind (symbol description type target count rewards status description-complete) quest-entity
+    (let ((q (make-Quest :symbol symbol :description description :type type :target target
+                          :count count :rewards rewards :status 'active
+                          :description-complete description-complete)))
+      (cons symbol q))))
+
+(defun quest-init (config-file)
+  "从CONFIG-FILE加载任务配置."
+  (let ((quest-entities (read-from-whole-string (file-content config-file))))
+    (setq quests-alist (mapcar #'build-quest quest-entities))))
+
+;; --- Reward distribution ---
+
+(defun quest-apply-rewards (quest)
+  "发放QUEST的奖励."
+  (dolist (reward (Quest-rewards quest))
+    (let ((key (car reward))
+          (value (cdr reward)))
+      (pcase key
+        ('exp (add-exp-to-creature myself value))
+        ('item (add-inventory-to-creature myself value))
+        ('bonus-points (take-effect-to-creature myself (cons 'bonus-points value)))
+        ('trigger (when (functionp value) (funcall value)))))))
+
+;; --- Progress tracking ---
+
+(defun quest-update-progress (quest)
+  "Update quest progress and check completion."
+  (cl-incf (Quest-progress quest))
+  (when (>= (Quest-progress quest) (Quest-count quest))
+    (setf (Quest-status quest) 'completed)
+    (tg-display (format "任务完成：%s" (Quest-description quest)))
+    (when (Quest-description-complete quest)
+      (tg-display (Quest-description-complete quest)))
+    (quest-apply-rewards quest)))
+
+(defun quest-track-kill (target-symbol)
+  "追踪击杀TARGET-SYMBOL的任务进度."
+  (dolist (pair quests-alist)
+    (let ((q (cdr pair)))
+      (when (and (eq (Quest-status q) 'active)
+                 (eq (Quest-type q) 'kill)
+                 (eq (Quest-target q) target-symbol))
+        (quest-update-progress q)))))
+
+(defun quest-track-collect (item-symbol)
+  "追踪收集ITEM-SYMBOL的任务进度."
+  (dolist (pair quests-alist)
+    (let ((q (cdr pair)))
+      (when (and (eq (Quest-status q) 'active)
+                 (eq (Quest-type q) 'collect)
+                 (eq (Quest-target q) item-symbol))
+        (quest-update-progress q)))))
+
+(defun quest-track-explore (room-symbol)
+  "追踪探索ROOM-SYMBOL的任务进度."
+  (dolist (pair quests-alist)
+    (let ((q (cdr pair)))
+      (when (and (eq (Quest-status q) 'active)
+                 (eq (Quest-type q) 'explore)
+                 (eq (Quest-target q) room-symbol))
+        (quest-update-progress q)))))
+
+(defun quest-track-talk (npc-symbol)
+  "追踪与NPC-SYMBOL对话的任务进度."
+  (dolist (pair quests-alist)
+    (let ((q (cdr pair)))
+      (when (and (eq (Quest-status q) 'active)
+                 (eq (Quest-type q) 'talk)
+                 (eq (Quest-target q) npc-symbol))
+        (quest-update-progress q)))))
+
+;; --- Quest listing ---
+
+(defun quest-list-active ()
+  "列出所有活跃任务."
+  (cl-remove-if-not (lambda (pair) (eq (Quest-status (cdr pair)) 'active)) quests-alist))
+
+(defun quest-list-all ()
+  "列出所有任务."
+  quests-alist)
+
+(provide 'quest-system)

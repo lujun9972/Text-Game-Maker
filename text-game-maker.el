@@ -18,6 +18,7 @@
 (require 'level-system)
 (require 'npc-behavior)
 (require 'save-system)
+(require 'quest-system)
 
 
 (provide 'text-game-maker)
