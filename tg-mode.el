@@ -114,6 +114,32 @@
                 (nth tg-history-index tg-command-history)))
       (end-of-line))))
 
+(defun tg-complete-command ()
+  "Complete command name after prompt."
+  (interactive)
+  (let ((prompt-end (save-excursion
+                      (beginning-of-line)
+                      (search-forward ">" (line-end-position) t))))
+    (when prompt-end
+      (let* ((input (buffer-substring-no-properties prompt-end (line-end-position)))
+             (candidates (mapcar (lambda (sym)
+                                   (substring (symbol-name sym) 3))
+                                 tg-valid-actions))
+             (completion (try-completion input candidates)))
+        (cond
+         ((null completion) nil)
+         ((eq completion t) nil)
+         ((string= completion input)
+          (let ((matches (all-completions input candidates)))
+            (when (> (length matches) 1)
+              (tg-display (format "候选命令: %s" (string-join matches ", "))))))
+         ((stringp completion)
+          (delete-region prompt-end (line-end-position))
+          (insert completion)))))))
+
+
+
+
 (defun tg-mprinc (string &optional no-newline)
   " Print something out, in window mode"
   (if (stringp string)
@@ -132,6 +158,7 @@
   (local-set-key (kbd "<down>") #'tg-history-next)
   (local-set-key (kbd "M-p") #'tg-history-prev)
   (local-set-key (kbd "M-n") #'tg-history-next)
+  (local-set-key (kbd "TAB") #'tg-complete-command)
   (setq-local eldoc-documentation-function #'tg-eldoc-function)
   (eldoc-mode 1))
 

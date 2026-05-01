@@ -3,6 +3,7 @@
 (require 'ert)
 (require 'test-helper)
 (require 'tg-mode)
+(require 'text-game-maker)
 
 ;; --- tg-mprinc ---
 
@@ -465,5 +466,56 @@
     (tg-record-history "d")
     (should (= (length tg-command-history) 3))
     (should (equal (car tg-command-history) "d"))))
+
+;; --- Tab completion ---
+
+(ert-deftest test-tg-complete-unique-prefix ()
+  "tg-complete-command should complete unique prefix."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-attack tg-move tg-help))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">at")
+      (goto-char (point-max))
+      (tg-complete-command)
+      (should (string-match-p ">attack$" (buffer-string))))))
+
+(ert-deftest test-tg-complete-no-match ()
+  "tg-complete-command should do nothing with no match."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-attack tg-move))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">xyz")
+      (goto-char (point-max))
+      (let ((before (buffer-string)))
+        (tg-complete-command)
+        (should (equal (buffer-string) before))))))
+
+(ert-deftest test-tg-complete-already-complete ()
+  "tg-complete-command should do nothing when already complete."
+  (test-with-globals-saved (tg-valid-actions)
+    (setq tg-valid-actions '(tg-attack tg-move))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">attack")
+      (goto-char (point-max))
+      (let ((before (buffer-string)))
+        (tg-complete-command)
+        (should (equal (buffer-string) before))))))
+
+(ert-deftest test-tg-complete-ambiguous-shows-candidates ()
+  "tg-complete-command on ambiguous prefix should show candidates via tg-display."
+  (test-with-globals-saved (tg-valid-actions display-fn)
+    (setq tg-valid-actions '(tg-talk tg-take))
+    (let (output)
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (with-temp-buffer
+        (tg-mode)
+        (insert ">ta")
+        (goto-char (point-max))
+        (tg-complete-command)
+        (should (cl-some (lambda (s) (string-match-p "talk" s)) (mapcar #'car output)))
+        (should (cl-some (lambda (s) (string-match-p "take" s)) (mapcar #'car output)))))))
 
 (provide 'test-tg-mode)
