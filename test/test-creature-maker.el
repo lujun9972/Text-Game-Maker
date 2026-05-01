@@ -183,4 +183,29 @@
          (cr (cdr result)))
     (should (null (Creature-exp-reward cr)))))
 
+;; --- behaviors slot ---
+
+(ert-deftest test-creature-behaviors-slot-default-nil ()
+  "Creature behaviors slot should default to nil."
+  (let ((cr (make-Creature :symbol 'goblin :description "A goblin")))
+    (should (null (Creature-behaviors cr)))))
+
+(ert-deftest test-creature-behaviors-slot-set ()
+  "Creature behaviors slot should be settable."
+  (let* ((rules '((((always) attack))))
+         (cr (make-Creature :symbol 'goblin :description "A goblin" :behaviors rules)))
+    (should (equal (Creature-behaviors cr) rules))))
+
+(ert-deftest test-build-creature-with-behaviors ()
+  "build-creature should parse 8-element tuple with behaviors."
+  (let* ((result (build-creature '(goblin "A goblin" ((hp . 25) (attack . 6) (defense . 2)) () () nil 15 (((always) attack)))))
+         (cr (cdr result)))
+    (should (= (length (Creature-behaviors cr)) 1))))
+
+(ert-deftest test-build-creature-without-behaviors ()
+  "build-creature should default behaviors to nil for 7-element tuple."
+  (let* ((result (build-creature '(goblin "A goblin" ((hp . 25) (attack . 6) (defense . 2)) () () nil 15)))
+         (cr (cdr result)))
+    (should (null (Creature-behaviors cr)))))
+
 (provide 'test-creature-maker)
