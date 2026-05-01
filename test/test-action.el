@@ -747,4 +747,27 @@
       (should (= (cdr (assoc 'hp (Creature-attr myself))) 105))
       (should (= (cdr (assoc 'bonus-points (Creature-attr myself))) 3)))))
 
+;; --- tg-move triggers npc behaviors ---
+
+(ert-deftest test-tg-move-triggers-npc-behavior ()
+  "tg-move should trigger NPC behaviors after entering room."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself tg-over-p)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room1 (make-Room :symbol 'room1 :description "Room 1"))
+           (room2 (make-Room :symbol 'room2 :description "Room 2" :creature '(goblin)))
+           (goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 5))
+                                  :behaviors '(((always) say "Welcome!"))))
+           (output nil))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq rooms-alist (list (cons 'room1 room1) (cons 'room2 room2)))
+      (setq room-map '((room1 room2)))
+      (setq current-room room1)
+      (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
+      (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero myself)))
+      (setq tg-over-p nil)
+      (tg-move "right")
+      ;; NPC should have spoken
+      (should (cl-some (lambda (s) (string-match-p "Welcome" s)) (mapcar #'car output))))))
+
 (provide 'test-action)

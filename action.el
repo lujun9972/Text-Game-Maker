@@ -6,6 +6,7 @@
 (require 'room-maker)
 (require 'inventory-maker)
 (require 'level-system)
+(require 'npc-behavior)
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
@@ -32,7 +33,8 @@
     ;; 触发进入事件
     (when (Room-in-trigger current-room)
       (funcall (Room-in-trigger current-room)))
-    (tg-display (describe current-room))))
+    (tg-display (describe current-room))
+    (npc-run-behaviors)))
 
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境

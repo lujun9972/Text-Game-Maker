@@ -1,6 +1,7 @@
 ;;; tg-mode.el --- Major mode for Text-Game-Maker  -*- lexical-binding: t; -*-
 
 (require 'action)
+(require 'npc-behavior)
 
 (defvar tg-over-p nil
   "游戏是否结束")
@@ -102,7 +103,8 @@
 									(throw 'exception "未知的命令"))
 									  (apply action things)))
 	      (when action-result
-	        (tg-mprinc action-result))))))
+	        (tg-mprinc action-result))
+	      (npc-run-behaviors)))))
   (goto-char (point-max))
   (tg-mprinc "\n")
   (tg-messages))
