@@ -334,4 +334,136 @@
     (insert-file-contents "action.el")
     (should-not (string-match-p "defvar display-fn" (buffer-string)))))
 
+;; --- Command history ---
+
+(ert-deftest test-tg-history-prev-replaces-input ()
+  "tg-history-prev should replace input with previous history entry."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history '("attack rat" "move up"))
+    (setq tg-history-index -1)
+    (setq tg-current-input "")
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">test")
+      (goto-char (point-max))
+      (tg-history-prev)
+      (should (string-match-p ">attack rat$" (buffer-string)))
+      (should (equal tg-current-input "test"))
+      (should (= tg-history-index 0)))))
+
+(ert-deftest test-tg-history-prev-saves-current-input ()
+  "tg-history-prev should save current input before entering history."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history '("attack rat"))
+    (setq tg-history-index -1)
+    (setq tg-current-input "")
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">my input")
+      (goto-char (point-max))
+      (tg-history-prev)
+      (should (equal tg-current-input "my input")))))
+
+(ert-deftest test-tg-history-prev-no-history ()
+  "tg-history-prev should do nothing when history is empty."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history nil)
+    (setq tg-history-index -1)
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">test")
+      (goto-char (point-max))
+      (let ((before (buffer-string)))
+        (tg-history-prev)
+        (should (equal (buffer-string) before))))))
+
+(ert-deftest test-tg-history-prev-cycles-through ()
+  "tg-history-prev should cycle through all history entries."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history '("attack rat" "move up" "take sword"))
+    (setq tg-history-index -1)
+    (setq tg-current-input "")
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">")
+      (goto-char (point-max))
+      (tg-history-prev)
+      (should (string-match-p ">attack rat$" (buffer-string)))
+      (tg-history-prev)
+      (should (string-match-p ">move up$" (buffer-string)))
+      (tg-history-prev)
+      (should (string-match-p ">take sword$" (buffer-string)))
+      ;; At end of history, should stay on last entry
+      (tg-history-prev)
+      (should (string-match-p ">take sword$" (buffer-string))))))
+
+(ert-deftest test-tg-history-next-restores-input ()
+  "tg-history-next should restore saved input when returning to present."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history '("attack rat" "move up"))
+    (setq tg-history-index -1)
+    (setq tg-current-input "")
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">my text")
+      (goto-char (point-max))
+      (tg-history-prev)
+      (tg-history-prev)
+      (should (= tg-history-index 1))
+      (tg-history-next)
+      (should (string-match-p ">attack rat$" (buffer-string)))
+      (should (= tg-history-index 0))
+      (tg-history-next)
+      (should (string-match-p ">my text$" (buffer-string)))
+      (should (= tg-history-index -1)))))
+
+(ert-deftest test-tg-history-next-at-present ()
+  "tg-history-next at present should do nothing."
+  (test-with-globals-saved (tg-command-history tg-history-index tg-current-input)
+    (setq tg-command-history '("attack rat"))
+    (setq tg-history-index -1)
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">test")
+      (goto-char (point-max))
+      (let ((before (buffer-string)))
+        (tg-history-next)
+        (should (equal (buffer-string) before))))))
+
+(ert-deftest test-tg-record-history-success ()
+  "tg-record-history should add command to front of history."
+  (test-with-globals-saved (tg-command-history tg-history-index)
+    (setq tg-command-history nil)
+    (setq tg-history-index -1)
+    (tg-record-history "attack rat")
+    (should (equal tg-command-history '("attack rat")))
+    (tg-record-history "move up")
+    (should (equal tg-command-history '("move up" "attack rat")))))
+
+(ert-deftest test-tg-record-history-dedup ()
+  "tg-record-history should skip duplicate of most recent entry."
+  (test-with-globals-saved (tg-command-history)
+    (setq tg-command-history '("attack rat"))
+    (tg-record-history "attack rat")
+    (should (equal tg-command-history '("attack rat")))))
+
+(ert-deftest test-tg-record-history-empty ()
+  "tg-record-history should not record empty strings."
+  (test-with-globals-saved (tg-command-history)
+    (setq tg-command-history nil)
+    (tg-record-history "")
+    (should (equal tg-command-history nil))))
+
+(ert-deftest test-tg-record-history-max ()
+  "tg-record-history should trim history beyond max size."
+  (test-with-globals-saved (tg-command-history tg-command-history-max)
+    (setq tg-command-history-max 3)
+    (setq tg-command-history nil)
+    (tg-record-history "a")
+    (tg-record-history "b")
+    (tg-record-history "c")
+    (tg-record-history "d")
+    (should (= (length tg-command-history) 3))
+    (should (equal (car tg-command-history) "d"))))
+
 (provide 'test-tg-mode)

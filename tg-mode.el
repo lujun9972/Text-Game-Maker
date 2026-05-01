@@ -1,11 +1,24 @@
 ;;; tg-mode.el --- Major mode for Text-Game-Maker  -*- lexical-binding: t; -*-
 
+(require 'cl-lib)
 (require 'action)
 (require 'npc-behavior)
 (require 'dialog-system)
 
 (defvar tg-over-p nil
   "游戏是否结束")
+
+(defvar tg-command-history nil
+  "命令历史列表，最新的在前面")
+
+(defvar tg-command-history-max 50
+  "命令历史最大条数")
+
+(defvar tg-history-index -1
+  "当前浏览的历史索引，-1 表示不在浏览历史")
+
+(defvar tg-current-input ""
+  "浏览历史前保存的当前输入")
 
 (defun tg-prompt-string ()
   "Return the prompt string showing current room symbol."
@@ -61,6 +74,46 @@
          ;; Ambiguous or no match - return nil
          (t nil))))))
 
+(defun tg-record-history (cmd)
+  "Record CMD to command history."
+  (when (and (stringp cmd) (not (string-empty-p cmd)))
+    (unless (and tg-command-history (string= cmd (car tg-command-history)))
+      (push cmd tg-command-history)
+      (when (> (length tg-command-history) tg-command-history-max)
+        (setf (nthcdr tg-command-history-max tg-command-history) nil)))
+    (setq tg-history-index -1)))
+
+(defun tg-history-prev ()
+  "Show previous command from history."
+  (interactive)
+  (let ((prompt-end (save-excursion
+                      (beginning-of-line)
+                      (search-forward ">" (line-end-position) t))))
+    (when (and prompt-end tg-command-history)
+      (when (= tg-history-index -1)
+        (setq tg-current-input
+              (buffer-substring-no-properties prompt-end (line-end-position))))
+      (let ((next-index (1+ tg-history-index)))
+        (when (< next-index (length tg-command-history))
+          (setq tg-history-index next-index)
+          (delete-region prompt-end (line-end-position))
+          (insert (nth tg-history-index tg-command-history))
+          (end-of-line))))))
+
+(defun tg-history-next ()
+  "Show next command from history."
+  (interactive)
+  (let ((prompt-end (save-excursion
+                      (beginning-of-line)
+                      (search-forward ">" (line-end-position) t))))
+    (when (and prompt-end (>= tg-history-index 0))
+      (cl-decf tg-history-index)
+      (delete-region prompt-end (line-end-position))
+      (insert (if (= tg-history-index -1)
+                  tg-current-input
+                (nth tg-history-index tg-command-history)))
+      (end-of-line))))
+
 (defun tg-mprinc (string &optional no-newline)
   " Print something out, in window mode"
   (if (stringp string)
@@ -75,6 +128,10 @@
   (make-local-variable 'scroll-step)
   (setq scroll-step 2)
   (local-set-key (kbd "<RET>") #'tg-parse)
+  (local-set-key (kbd "<up>") #'tg-history-prev)
+  (local-set-key (kbd "<down>") #'tg-history-next)
+  (local-set-key (kbd "M-p") #'tg-history-prev)
+  (local-set-key (kbd "M-n") #'tg-history-next)
   (setq-local eldoc-documentation-function #'tg-eldoc-function)
   (eldoc-mode 1))
 
@@ -98,14 +155,17 @@
             (progn
               (dialog-handle-choice line)
               (npc-run-behaviors))
-          (let (action-result action things)
+          (let (action-result action things (success nil))
             (setq action-result (catch 'exception
                                   (setq action (car (split-string line)))
                                   (setq things (cdr (split-string line)))
                                   (setq action (intern (format "tg-%s" action)))
                                   (unless (member action tg-valid-actions)
                                     (throw 'exception "未知的命令"))
-                                  (apply action things)))
+                                  (apply action things)
+                                  (setq success t)))
+            (when success
+              (tg-record-history line))
             (when action-result
               (tg-mprinc action-result))
             (npc-run-behaviors))))))
