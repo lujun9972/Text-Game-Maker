@@ -847,4 +847,43 @@
       (should (equal (catch 'exception (tg-load "no-such-save"))
                      "存档文件不存在")))))
 
+;; --- tg-attack quest tracking ---
+
+(ert-deftest test-tg-attack-triggers-kill-quest ()
+  "tg-attack should trigger kill quest progress when target is killed."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself quests-alist level-exp-table level-up-bonus-points auto-upgrade-attrs)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(rat)))
+           (rat (make-Creature :symbol 'rat :description "A rat"
+                                :attr '((hp . 5) (attack . 1) (defense . 0)) :exp-reward 5))
+           (q (make-Quest :symbol 'kill-rat :type 'kill :target 'rat :count 1 :progress 0
+                          :status 'active :description "Kill rat" :description-complete "Done!")))
+      (setq display-fn #'ignore)
+      (setq level-exp-table '(0 100))
+      (setq level-up-bonus-points 3)
+      (setq auto-upgrade-attrs '((hp . 5)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 10) (defense . 5) (exp . 0) (level . 1) (bonus-points . 0))))
+      (setq creatures-alist (list (cons 'rat rat) (cons 'hero myself)))
+      (setq quests-alist (list (cons 'kill-rat q)))
+      (tg-attack 'rat)
+      (should (eq (Quest-status q) 'completed)))))
+
+;; --- tg-quests command ---
+
+(ert-deftest test-tg-quests-displays-active ()
+  "tg-quests should display active quests."
+  (test-with-globals-saved (tg-valid-actions display-fn quests-alist)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let ((q (make-Quest :symbol 'test-q :description "Test quest" :type 'kill :target 'rat
+                          :count 3 :progress 1 :status 'active))
+          (output nil))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq quests-alist (list (cons 'test-q q)))
+      (tg-quests)
+      (should (cl-some (lambda (s) (string-match-p "Test quest" s)) (mapcar #'car output))))))
+
 (provide 'test-action)

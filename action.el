@@ -7,6 +7,7 @@
 (require 'inventory-maker)
 (require 'level-system)
 (require 'npc-behavior)
+(require 'quest-system)
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
@@ -34,6 +35,7 @@
     (when (Room-in-trigger current-room)
       (funcall (Room-in-trigger current-room)))
     (tg-display (describe current-room))
+    (quest-track-explore new-room-symbol)
     (npc-run-behaviors)))
 
 (tg-defaction tg-watch (&optional symbol)
@@ -52,6 +54,8 @@
     (when-let* ((trig (cond ((Inventory-p object) (Inventory-watch-trigger object))
                            ((Creature-p object) (Creature-watch-trigger object)))))
       (funcall trig))
+    (when (and symbol (Creature-p object))
+      (quest-track-talk symbol))
     (describe object)))
 
 (tg-defaction tg-take (inventory)
@@ -64,7 +68,8 @@
     (when-let* ((trig (Inventory-take-trigger object)))
       (funcall trig))
     (add-inventory-to-creature myself inventory)
-    (remove-inventory-from-room current-room inventory)))
+    (remove-inventory-from-room current-room inventory)
+    (quest-track-collect inventory)))
 
 (tg-defaction tg-drop (inventory)
   "使用'drop 物品'丢弃身上的物品"
@@ -128,6 +133,7 @@
           (when-let* ((trig (Creature-death-trigger target-creature)))
             (funcall trig))
           (tg-display (format "%s被击败了！" target))
+          (quest-track-kill target)
           (let ((exp-gained (get-exp-reward target-creature)))
             (tg-display (format "获得 %d 点经验值！" exp-gained))
             (add-exp-to-creature myself exp-gained)))
@@ -174,6 +180,32 @@
     (when (stringp action)
       (setq action (intern (format "tg-%s" action))))
     (tg-display (documentation action))))
+(tg-defaction tg-quests ()
+  "使用'quests'查看当前任务列表"
+  (tg-display "=== 任务列表 ===")
+  (dolist (pair quests-alist)
+    (let ((q (cdr pair)))
+      (cond ((eq (Quest-status q) 'active)
+             (tg-display (format "[进行中] %s (%d/%d)" (Quest-description q) (Quest-progress q) (Quest-count q))))
+            ((eq (Quest-status q) 'completed)
+             (tg-display (format "[已完成] %s" (Quest-description q))))
+            ((eq (Quest-status q) 'inactive)
+             (tg-display (format "[未开始] %s" (Quest-description q))))))))
+
+(tg-defaction tg-quest (name)
+  "使用'quest <名称>'查看指定任务详情"
+  (when (stringp name)
+    (setq name (intern name)))
+  (let ((q (cdr (assoc name quests-alist))))
+    (unless q
+      (throw 'exception (format "没有任务%s" name)))
+    (tg-display (format "任务：%s" (Quest-description q)))
+    (tg-display (format "类型：%s  目标：%s" (Quest-type q) (Quest-target q)))
+    (tg-display (format "进度：%d/%d" (Quest-progress q) (Quest-count q)))
+    (tg-display (format "状态：%s" (Quest-status q)))
+    (when (Quest-rewards q)
+      (tg-display (format "奖励：%s" (Quest-rewards q))))))
+
 (tg-defaction tg-save (name)
   "使用'save <名称>'保存游戏到saves/<名称>.sav"
   (unless name
