@@ -23,4 +23,5 @@ emacs --batch --no-site-file --no-init-file \
     (require 'test-save-system)
     (require 'test-quest-system)
     (require 'test-dialog-system)
+    (require 'test-shop-system)
     (ert-run-tests-batch-and-exit '(or \"test-\" t)))"
