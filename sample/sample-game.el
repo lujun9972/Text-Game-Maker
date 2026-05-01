@@ -31,6 +31,7 @@
     (tg-display "战斗提示: 先去走廊和武器库收集装备，再去挑战骷髅王！")
     (tg-display "任务提示: 输入 quests 查看任务列表，quest <名称> 查看任务详情！")
     (tg-display "对话提示: 输入 talk <NPC名称> 与NPC对话！")
-    (tg-display "")))
+    (tg-display "")
+    (tg-messages)))
 
 (provide 'sample-game)
