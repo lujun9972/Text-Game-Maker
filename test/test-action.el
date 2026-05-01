@@ -770,4 +770,81 @@
       ;; NPC should have spoken
       (should (cl-some (lambda (s) (string-match-p "Welcome" s)) (mapcar #'car output))))))
 
+;; --- tg-save ---
+
+(ert-deftest test-tg-save-creates-save-file ()
+  "tg-save should create a save file in saves directory."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself tg-config-dir)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(hero)))
+           (hero (make-Creature :symbol 'hero :attr '((hp . 100))))
+           (output nil)
+           (tmp-dir (make-temp-file "tg-save-dir-" t)))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq creatures-alist (list (cons 'hero hero)))
+      (setq myself hero)
+      (setq tg-config-dir tmp-dir)
+      (tg-save "test-slot")
+      (should (file-exists-p (expand-file-name "saves/test-slot.sav" tmp-dir)))
+      (delete-directory tmp-dir t))))
+
+;; --- tg-load ---
+
+(ert-deftest test-tg-load-restores-state ()
+  "tg-load should restore game state from save."
+  (test-with-globals-saved (rooms-alist room-map current-room tg-valid-actions display-fn
+                                        creatures-alist myself tg-config-dir tg-over-p
+                                        inventorys-alist)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(hero)))
+           (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword)))
+           (output nil)
+           (tmp-dir (make-temp-file "tg-save-dir-" t)))
+      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq rooms-alist (list (cons 'room1 room)))
+      (setq room-map '((room1)))
+      (setq current-room room)
+      (setq creatures-alist (list (cons 'hero hero)))
+      (setq myself hero)
+      (setq tg-config-dir tmp-dir)
+      (setq tg-over-p nil)
+      (setq inventorys-alist nil)
+      (unwind-protect
+          (progn
+            ;; Write minimal config files so tg-load-game can re-initialize
+            (with-temp-file (expand-file-name "room-config.el" tmp-dir)
+              (insert "(room1 \"Room 1\" nil (hero))"))
+            (with-temp-file (expand-file-name "map-config.el" tmp-dir)
+              (insert "room1"))
+            (with-temp-file (expand-file-name "inventory-config.el" tmp-dir)
+              (insert ""))
+            (with-temp-file (expand-file-name "creature-config.el" tmp-dir)
+              (insert "(hero \"\" ((hp . 100)) (sword) nil nil nil nil)"))
+            (tg-save "test-slot")
+            ;; Modify state
+            (setf (Creature-attr myself) '((hp . 1)))
+            (setq tg-over-p t)
+            ;; Load
+            (tg-load "test-slot")
+            ;; Verify
+            (should (= (cdr (assoc 'hp (Creature-attr myself))) 100))
+            (should (equal (Creature-inventory myself) '(sword)))
+            (should-not tg-over-p))
+        (delete-directory tmp-dir t)))))
+
+(ert-deftest test-tg-load-nonexistent-throws ()
+  "tg-load should throw for nonexistent save."
+  (test-with-globals-saved (tg-valid-actions display-fn myself tg-config-dir)
+    (setq tg-valid-actions (copy-sequence tg-valid-actions))
+    (let ((hero (make-Creature :symbol 'hero :attr '((hp . 100)))))
+      (setq display-fn #'ignore)
+      (setq myself hero)
+      (setq tg-config-dir "/tmp/nonexistent-tg-dir")
+      (should (equal (catch 'exception (tg-load "no-such-save"))
+                     "存档文件不存在")))))
+
 (provide 'test-action)

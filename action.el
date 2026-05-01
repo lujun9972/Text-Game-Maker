@@ -174,6 +174,28 @@
     (when (stringp action)
       (setq action (intern (format "tg-%s" action))))
     (tg-display (documentation action))))
+(tg-defaction tg-save (name)
+  "使用'save <名称>'保存游戏到saves/<名称>.sav"
+  (unless name
+    (throw 'exception "请输入存档名称"))
+  (let ((save-dir (if tg-config-dir
+                      (expand-file-name "saves" tg-config-dir)
+                    "saves"))
+        (save-path nil))
+    (setq save-path (expand-file-name (concat name ".sav") save-dir))
+    (tg-save-game save-path)))
+
+(tg-defaction tg-load (name)
+  "使用'load <名称>'从saves/<名称>.sav恢复游戏"
+  (unless name
+    (throw 'exception "请输入存档名称"))
+  (let ((save-dir (if tg-config-dir
+                      (expand-file-name "saves" tg-config-dir)
+                    "saves"))
+        (save-path nil))
+    (setq save-path (expand-file-name (concat name ".sav") save-dir))
+    (tg-load-game save-path)))
+
 (tg-defaction tg-quit()
   "使用'quit'退出游戏"
   (setq tg-over-p t))
