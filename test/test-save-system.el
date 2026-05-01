@@ -137,4 +137,50 @@
     (should (equal (catch 'exception (tg-load-game "/nonexistent/path/save.sav"))
                    "存档文件不存在"))))
 
+;; --- Shop save/load ---
+
+(ert-deftest test-tg-save-restore-player-gold ()
+  "Save/restore should persist player-gold."
+  (test-with-globals-saved (player-gold current-room rooms-alist room-map creatures-alist
+                        shop-alist myself tg-over-p tg-config-dir)
+    (setq player-gold 42)
+    (setq tg-over-p nil)
+    (setq tg-config-dir nil)
+    (setq creatures-alist nil)
+    (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
+    (push (cons 'hero myself) creatures-alist)
+    (setq rooms-alist nil)
+    (setq current-room (make-Room :symbol 'start :description "Start"))
+    (push (cons 'start current-room) rooms-alist)
+    (setq room-map '((start)))
+    (setq shop-alist nil)
+    (test-with-temp-file ""
+      (tg-save-game temp-file)
+      (setq player-gold 0)
+      (tg-load-game temp-file)
+      (should (= player-gold 42)))))
+
+(ert-deftest test-tg-save-restore-shop-alist ()
+  "Save/restore should persist shop-alist."
+  (test-with-globals-saved (player-gold current-room rooms-alist room-map creatures-alist
+                        shop-alist myself tg-over-p tg-config-dir)
+    (setq player-gold 0)
+    (setq tg-over-p nil)
+    (setq tg-config-dir nil)
+    (setq creatures-alist nil)
+    (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
+    (push (cons 'hero myself) creatures-alist)
+    (setq rooms-alist nil)
+    (setq current-room (make-Room :symbol 'start :description "Start"))
+    (push (cons 'start current-room) rooms-alist)
+    (setq room-map '((start)))
+    (setq shop-alist '((merchant . (0.5 . ((sword . 50))))))
+    (test-with-temp-file ""
+      (tg-save-game temp-file)
+      (setq shop-alist nil)
+      (tg-load-game temp-file)
+      (should (assoc 'merchant shop-alist))
+      (should (= (shop-get-sell-rate 'merchant) 0.5))
+      (should (= (shop-get-item-price 'merchant 'sword) 50)))))
+
 (provide 'test-save-system)

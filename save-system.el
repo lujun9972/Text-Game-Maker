@@ -4,6 +4,7 @@
 (require 'room-maker)
 (require 'creature-maker)
 (require 'level-system)
+(require 'shop-system)
 
 ;; --- Serialization ---
 
@@ -32,7 +33,9 @@
                              rooms-alist))
            (creatures . ,(mapcar (lambda (pair)
                                    (cons (car pair) (tg-serialize-creature (cdr pair))))
-                                 creatures-alist)))))
+                                 creatures-alist))
+           (player-gold . ,player-gold)
+           (shop-alist . ,(copy-tree shop-alist)))))
     (let ((dir (file-name-directory filepath)))
       (when (and dir (not (file-directory-p dir)))
         (make-directory dir t)))
@@ -73,7 +76,10 @@
           (setf (Creature-attr cr) (cdr (assoc 'attr cr-state)))
           (setf (Creature-inventory cr) (cdr (assoc 'inventory cr-state)))
           (setf (Creature-equipment cr) (cdr (assoc 'equipment cr-state)))
-          (setf (Creature-behaviors cr) (cdr (assoc 'behaviors cr-state))))))))
+          (setf (Creature-behaviors cr) (cdr (assoc 'behaviors cr-state)))))))
+  ;; Restore shop state
+  (setq player-gold (or (cdr (assoc 'player-gold data)) 0))
+  (setq shop-alist (or (cdr (assoc 'shop-alist data)) shop-alist)))
 
 (defun tg-load-game (filepath)
   "Load game state from FILEPATH."
