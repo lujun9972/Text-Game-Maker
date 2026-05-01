@@ -1,0 +1,6 @@
+(kill-rat "消灭老鼠" kill rat 1 ((exp . 10)) inactive "你消灭了地牢中的老鼠！")
+(talk-prisoner "与囚犯对话" talk prisoner 1 ((exp . 15) (item . map)) inactive "囚犯给了你一张地图，上面标记了隐藏的宝物！")
+(collect-sword "获取铁剑" collect iron-sword 1 ((exp . 20)) inactive "你找到了一把铁剑！")
+(kill-goblin "击败哥布林" kill goblin 1 ((exp . 30)) inactive "哥布林被击败了！")
+(explore-throne "探索王座间" explore throne 1 ((exp . 50)) inactive "你踏入了王座间，空气中弥漫着死亡的气息...")
+(defeat-skeleton-king "击败骷髅王" kill skeleton-king 1 ((exp . 200) (bonus-points . 5)) inactive "骷髅王倒下了！你解放了这座地牢！")
