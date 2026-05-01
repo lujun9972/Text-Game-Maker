@@ -9,6 +9,7 @@
 (require 'npc-behavior)
 (require 'quest-system)
 (require 'dialog-system)
+(require 'shop-system)
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
@@ -240,4 +241,55 @@
 (tg-defaction tg-quit()
   "使用'quit'退出游戏"
   (setq tg-over-p t))
+
+(tg-defaction tg-shop ()
+  "使用'shop'查看当前房间商人的商品"
+  (let ((sk (shop-get-shopkeeper)))
+    (if (not sk)
+        (tg-display "这里没有商人")
+      (let* ((npc-sym (Creature-symbol sk))
+             (goods (shop-get-goods npc-sym)))
+        (if (not goods)
+            (tg-display "商品已售罄")
+          (tg-display (format "=== %s 的商店 ===" npc-sym))
+          (dolist (item goods)
+            (tg-display (format "  %s: %d 金币" (car item) (cdr item))))
+          (tg-display (format "你的金币: %d" player-gold)))))))
+
+(tg-defaction tg-buy (item)
+  "使用'buy <物品>'从商人购买物品"
+  (when (stringp item)
+    (setq item (intern item)))
+  (let ((sk (shop-get-shopkeeper)))
+    (unless sk
+      (throw 'exception "这里没有商人"))
+    (let* ((npc-sym (Creature-symbol sk))
+           (price (shop-get-item-price npc-sym item)))
+      (unless price
+        (throw 'exception "商人没有这个商品"))
+      (unless (>= player-gold price)
+        (throw 'exception "金币不足"))
+      (cl-decf player-gold price)
+      (shop-remove-item npc-sym item)
+      (add-inventory-to-creature myself item)
+      (tg-display (format "购买了 %s，花费 %d 金币（剩余: %d）" item price player-gold)))))
+
+(tg-defaction tg-sell (item)
+  "使用'sell <物品>'向商人卖出物品"
+  (when (stringp item)
+    (setq item (intern item)))
+  (let ((sk (shop-get-shopkeeper)))
+    (unless sk
+      (throw 'exception "这里没有商人"))
+    (unless (inventory-exist-in-creature-p myself item)
+      (throw 'exception (format "身上没有%s" item)))
+    (let* ((npc-sym (Creature-symbol sk))
+           (sell-rate (shop-get-sell-rate npc-sym))
+           (base-price (or (shop-get-item-price npc-sym item) 5))
+           (sell-price (max 1 (floor (* base-price sell-rate)))))
+      (cl-incf player-gold sell-price)
+      (remove-inventory-from-creature myself item)
+      (shop-add-item npc-sym item base-price)
+      (tg-display (format "卖出了 %s，获得 %d 金币（持有: %d）" item sell-price player-gold)))))
+
 (provide 'action)

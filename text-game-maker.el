@@ -20,6 +20,7 @@
 (require 'save-system)
 (require 'quest-system)
 (require 'dialog-system)
+(require 'shop-system)
 
 
 (provide 'text-game-maker)
