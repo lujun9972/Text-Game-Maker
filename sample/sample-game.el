@@ -19,6 +19,7 @@
     (creatures-init (expand-file-name "creature-config.el" sample-dir))
     (level-init (expand-file-name "level-config.el" sample-dir))
     (quest-init (expand-file-name "quest-config.el" sample-dir))
+    (dialog-init (expand-file-name "dialog-config.el" sample-dir))
     (tg-mode)
     (tg-display (tg-prompt-string))
     (tg-display (describe current-room))
@@ -29,6 +30,7 @@
     (tg-display "存档提示: 使用 save <名称> 保存进度，load <名称> 恢复进度！")
     (tg-display "战斗提示: 先去走廊和武器库收集装备，再去挑战骷髅王！")
     (tg-display "任务提示: 输入 quests 查看任务列表，quest <名称> 查看任务详情！")
+    (tg-display "对话提示: 输入 talk <NPC名称> 与NPC对话！")
     (tg-display "")))
 
 (provide 'sample-game)
