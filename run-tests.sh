@@ -20,4 +20,5 @@ emacs --batch --no-site-file --no-init-file \
     (require 'test-tg-mode)
     (require 'test-tg-config-generator)
     (require 'test-npc-behavior)
+    (require 'test-save-system)
     (ert-run-tests-batch-and-exit '(or \"test-\" t)))"

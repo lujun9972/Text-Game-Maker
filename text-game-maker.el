@@ -17,6 +17,7 @@
 (require 'tg-config-generator)
 (require 'level-system)
 (require 'npc-behavior)
+(require 'save-system)
 
 
 (provide 'text-game-maker)
