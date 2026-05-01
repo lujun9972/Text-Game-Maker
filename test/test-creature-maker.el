@@ -208,4 +208,30 @@
          (cr (cdr result)))
     (should (null (Creature-behaviors cr)))))
 
+;; --- Shopkeeper ---
+
+(ert-deftest test-creature-shopkeeper-default-nil ()
+  "Creature shopkeeper should default to nil."
+  (let ((c (make-Creature :symbol 'goblin :description "A goblin")))
+    (should-not (Creature-shopkeeper c))))
+
+(ert-deftest test-creature-shopkeeper-set ()
+  "Creature shopkeeper can be set to t."
+  (let ((c (make-Creature :symbol 'merchant :description "A merchant" :shopkeeper t)))
+    (should (Creature-shopkeeper c))))
+
+(ert-deftest test-build-creature-with-shopkeeper ()
+  "build-creature should parse 9th element as shopkeeper."
+  (test-with-globals-saved (creatures-alist)
+    (setq creatures-alist nil)
+    (let ((result (build-creature '(merchant "商人" ((hp . 30)) () () nil 0 nil t))))
+      (should (Creature-shopkeeper (cdr result))))))
+
+(ert-deftest test-build-creature-without-shopkeeper ()
+  "build-creature should default shopkeeper to nil for 8-element config."
+  (test-with-globals-saved (creatures-alist)
+    (setq creatures-alist nil)
+    (let ((result (build-creature '(goblin "哥布林" ((hp . 25)) () () nil 10 nil))))
+      (should-not (Creature-shopkeeper (cdr result))))))
+
 (provide 'test-creature-maker)

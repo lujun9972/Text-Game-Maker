@@ -20,7 +20,8 @@
   (watch-trigger nil :documentation "查看该CREATURE后触发的事件")
   (death-trigger nil :documentation "该CREATURE被击败后触发的事件")
   (exp-reward nil :documentation "击败该CREATURE获得的经验值")
-  (behaviors nil :documentation "NPC主动行为规则列表"))
+  (behaviors nil :documentation "NPC主动行为规则列表")
+  (shopkeeper nil :documentation "是否为商人"))
 
 (cl-defmethod describe ((creature Creature))
   "输出creature的描述"
@@ -32,8 +33,13 @@
 ;; 创建creature列表的方法
 (defun build-creature (creature-entity)
   "根据creature-entity创建creature,并将creature存入creatures-alist中"
-  (cl-multiple-value-bind (symbol description attr inventory equipment death-trigger exp-reward behaviors) creature-entity
-	(cons symbol (make-Creature :symbol symbol :description description :inventory inventory :equipment equipment :attr attr :death-trigger death-trigger :exp-reward exp-reward :behaviors behaviors))))
+  (let* ((len (length creature-entity))
+         (shopkeeper (when (> len 8) (nth 8 creature-entity))))
+    (cl-multiple-value-bind (symbol description attr inventory equipment death-trigger exp-reward behaviors) creature-entity
+      (cons symbol (make-Creature :symbol symbol :description description :inventory inventory
+                                  :equipment equipment :attr attr :death-trigger death-trigger
+                                  :exp-reward exp-reward :behaviors behaviors
+                                  :shopkeeper shopkeeper)))))
 
 (defun build-creatures(creature-config-file)
   "根据`creature-config-file'中的配置信息创建各个creature"
