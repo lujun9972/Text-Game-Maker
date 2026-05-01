@@ -113,8 +113,12 @@
 (defvar current-room nil				;
   "当前所处的room对象")
 
+(defvar tg-config-dir nil
+  "游戏配置文件目录路径，用于存档恢复时重新加载配置。")
+
 (defun map-init(room-config-file room-map-config-file)
   "初始化函数,生成room对象,组装map"
+  (setq tg-config-dir (file-name-directory room-config-file))
   (setq rooms-alist (build-rooms room-config-file))
   (setq room-map (build-room-map room-map-config-file))
   (setq current-room (get-room-by-symbol (caar rooms-alist))))

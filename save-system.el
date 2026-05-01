@@ -5,9 +5,6 @@
 (require 'creature-maker)
 (require 'level-system)
 
-(defvar tg-config-dir nil
-  "游戏配置文件目录路径，用于存档恢复时重新加载配置。")
-
 ;; --- Serialization ---
 
 (defun tg-serialize-creature (creature)
