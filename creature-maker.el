@@ -81,12 +81,16 @@
   (member equipment (Creature-equipment creature)))
 
 (defun take-effect-to-creature (creature effect)
-  ""
+  "\u5bf9CREATURE\u65bd\u52a0EFFECT (attr-type . value)\u3002hp\u4ee5\u5916\u7684\u5c5e\u6027\u4e0d\u4f4e\u4e8e0\u3002"
   (let* ((attr-type (car effect))
 		(value (cdr effect)))
 	(if (assoc attr-type (Creature-attr creature))
-		(cl-incf (cdr (assoc attr-type (Creature-attr creature))) value)
-	  (push (cl-copy-list effect ) (Creature-attr creature)))))
+		(let ((new-value (+ (cdr (assoc attr-type (Creature-attr creature))) value)))
+		  (setf (cdr (assoc attr-type (Creature-attr creature)))
+			(if (and (not (eq attr-type 'hp)) (< new-value 0))
+				0
+			  new-value)))
+	  (push (cl-copy-list effect) (Creature-attr creature)))))
 
 (defun take-effects-to-creature(creature effects)
   ""
