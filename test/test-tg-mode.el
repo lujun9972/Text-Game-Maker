@@ -518,4 +518,23 @@
         (should (cl-some (lambda (s) (string-match-p "talk" s)) (mapcar #'car output)))
         (should (cl-some (lambda (s) (string-match-p "take" s)) (mapcar #'car output)))))))
 
+;; --- tg-parse returns action result (not "t") ---
+
+(ert-deftest test-tg-parse-action-result-not-t ()
+  "tg-parse should display the action's return value, not symbol t."
+  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+    (setq tg-valid-actions '(tg-watch))
+    (setq current-room (make-Room :symbol 'test-room :description "A test room"))
+    (setq rooms-alist (list (cons 'test-room current-room)))
+    (setq room-map '((test-room)))
+    (with-temp-buffer
+      (tg-mode)
+      (insert ">watch\n")
+      (goto-char (point-max))
+      (forward-line -1)
+      (tg-parse 1)
+      (let ((buf (buffer-string)))
+        (should-not (string-match-p "^t$" buf))
+        (should (string-match-p "test room" buf))))))
+
 (provide 'test-tg-mode)

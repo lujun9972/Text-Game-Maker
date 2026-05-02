@@ -189,8 +189,9 @@
                                   (setq action (intern (format "tg-%s" action)))
                                   (unless (member action tg-valid-actions)
                                     (throw 'exception "未知的命令"))
-                                  (apply action things)
-                                  (setq success t)))
+                                  (let ((result (apply action things)))
+                                    (setq success t)
+                                    result)))
             (when success
               (tg-record-history line))
             (when action-result
