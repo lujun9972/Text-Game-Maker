@@ -31,7 +31,7 @@
     (tg-display "升级提示: 击败怪物获得经验值，升级后用 upgrade <属性> <点数> 分配技能点！")
     (tg-display "存档提示: 使用 save <名称> 保存进度，load <名称> 恢复进度！")
     (tg-display "战斗提示: 先去走廊和武器库收集装备，再去挑战骷髅王！")
-    (tg-display "任务提示: 输入 quests 查看任务列表，quest <名称> 查看任务详情！")
+    (tg-display "任务提示: 输入 quests 查看任务列表，quest <名称> 查看详情，accept <名称> 接受任务！")
     (tg-display "对话提示: 输入 talk <NPC名称> 与NPC对话！")
     (tg-display "商店提示: 输入 shop 查看商品，buy <物品> 购买，sell <物品> 出售！")
     (tg-display "")
