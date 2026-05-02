@@ -200,7 +200,7 @@
               (tg-record-history line))
             (when action-result
               (tg-mprinc action-result))
-            (unless (member action tg-passive-actions)
+            (when (and success (not (member action tg-passive-actions)))
               (npc-run-behaviors)))))))
   (goto-char (point-max))
   (tg-mprinc "\n")
