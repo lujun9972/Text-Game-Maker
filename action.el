@@ -170,7 +170,14 @@
 
 (tg-defaction tg-status(&optional useless)
   "使用'status'查看自己的状态"
-  (tg-display (describe myself)))
+  (tg-display (describe myself))
+  (when quests-alist
+    (tg-display "=== 进行中的任务 ===")
+    (dolist (pair quests-alist)
+      (let ((q (cdr pair)))
+        (when (eq (Quest-status q) 'active)
+          (tg-display (format "- %s (%d/%d)" (Quest-description q)
+                              (Quest-progress q) (Quest-count q))))))))
 
 (tg-defaction tg-help (&rest actions)
   "使用'help'查看各action说明
