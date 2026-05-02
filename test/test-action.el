@@ -767,6 +767,7 @@
       (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero myself)))
       (setq tg-over-p nil)
       (tg-move "right")
+      (npc-run-behaviors)
       ;; NPC should have spoken
       (should (cl-some (lambda (s) (string-match-p "Welcome" s)) (mapcar #'car output))))))
 

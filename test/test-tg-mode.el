@@ -537,4 +537,49 @@
         (should-not (string-match-p "^t$" buf))
         (should (string-match-p "test room" buf))))))
 
+;; --- Passive actions should not trigger NPC behaviors ---
+
+(ert-deftest test-tg-parse-watch-does-not-trigger-npc ()
+  "watch command should not trigger NPC behaviors (not consume a turn)."
+  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+    (setq tg-valid-actions '(tg-watch))
+    (setq current-room (make-Room :symbol 'test-room :description "A test room"))
+    (setq rooms-alist (list (cons 'test-room current-room)))
+    (setq room-map '((test-room)))
+    (let ((npc-called nil))
+      (cl-letf (((symbol-function 'npc-run-behaviors)
+                 (lambda () (setq npc-called t))))
+        (with-temp-buffer
+          (tg-mode)
+          (insert ">watch\n")
+          (goto-char (point-max))
+          (forward-line -1)
+          (tg-parse 1)
+          (should-not npc-called))))))
+
+(ert-deftest test-tg-parse-attack-triggers-npc ()
+  "attack command should trigger NPC behaviors (consumes a turn)."
+  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map
+                             myself creatures-alist)
+    (setq tg-valid-actions '(tg-attack))
+    (let ((room (make-Room :symbol 'arena :description "An arena"))
+          (rat (make-Creature :symbol 'rat :description "A rat"
+                              :attr '((hp . 10) (attack . 2) (defense . 0)))))
+      (setq current-room room)
+      (setf (Room-creature room) '(rat))
+      (setq rooms-alist (list (cons 'arena room)))
+      (setq room-map '((arena)))
+      (setq creatures-alist (list (cons 'rat rat)))
+      (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3))))
+      (let ((npc-called nil))
+        (cl-letf (((symbol-function 'npc-run-behaviors)
+                   (lambda () (setq npc-called t))))
+          (with-temp-buffer
+            (tg-mode)
+            (insert ">attack rat\n")
+            (goto-char (point-max))
+            (forward-line -1)
+            (tg-parse 1)
+            (should npc-called)))))))
+
 (provide 'test-tg-mode)

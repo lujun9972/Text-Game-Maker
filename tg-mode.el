@@ -20,6 +20,10 @@
 (defvar tg-current-input ""
   "浏览历史前保存的当前输入")
 
+(defvar tg-passive-actions '(tg-watch tg-help tg-status tg-quests tg-quest
+                                      tg-save tg-load tg-quit tg-shop)
+  "不消耗回合的动作列表，这些动作不触发 NPC 行为")
+
 (defun tg-prompt-string ()
   "Return the prompt string showing current room symbol."
   (if (and current-room (Room-p current-room))
@@ -196,7 +200,8 @@
               (tg-record-history line))
             (when action-result
               (tg-mprinc action-result))
-            (npc-run-behaviors))))))
+            (unless (member action tg-passive-actions)
+              (npc-run-behaviors)))))))
   (goto-char (point-max))
   (tg-mprinc "\n")
   (tg-messages))

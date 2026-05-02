@@ -37,8 +37,7 @@
     (when (Room-in-trigger current-room)
       (funcall (Room-in-trigger current-room)))
     (tg-display (describe current-room))
-    (quest-track-explore new-room-symbol)
-    (npc-run-behaviors)))
+    (quest-track-explore new-room-symbol)))
 
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境
