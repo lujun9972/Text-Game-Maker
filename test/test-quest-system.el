@@ -39,7 +39,7 @@
                           :count 1 :status 'active)))
       (setq quests-alist (list (cons 'test-q q)))
       (should (equal (catch 'exception (quest-accept 'test-q))
-                     "任务test-q当前状态无法接受")))))
+                     "任务Test当前状态无法接受")))))
 
 ;; --- quest-track-kill ---
 

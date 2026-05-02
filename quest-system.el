@@ -109,15 +109,23 @@
   "列出所有任务."
   quests-alist)
 
+(defun quest-find (name)
+  "按symbol或description查找任务，返回(cons symbol quest)或nil."
+  (when (stringp name)
+    (setq name (intern name)))
+  (or (assoc name quests-alist)
+      (cl-find-if (lambda (pair)
+                     (string= (Quest-description (cdr pair)) (symbol-name name)))
+                   quests-alist)))
+
 (defun quest-accept (quest-name)
   "接受指定任务，将状态从inactive改为active."
-  (when (stringp quest-name)
-    (setq quest-name (intern quest-name)))
-  (let ((q (cdr (assoc quest-name quests-alist))))
-    (unless q
+  (let* ((pair (quest-find quest-name))
+         (q (cdr pair)))
+    (unless pair
       (throw 'exception (format "没有任务%s" quest-name)))
     (unless (eq (Quest-status q) 'inactive)
-      (throw 'exception (format "任务%s当前状态无法接受" quest-name)))
+      (throw 'exception (format "任务%s当前状态无法接受" (Quest-description q))))
     (setf (Quest-status q) 'active)
     (tg-display (format "接受了任务：%s" (Quest-description q)))))
 

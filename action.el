@@ -210,10 +210,9 @@
 
 (tg-defaction tg-quest (name)
   "使用'quest <名称>'查看指定任务详情"
-  (when (stringp name)
-    (setq name (intern name)))
-  (let ((q (cdr (assoc name quests-alist))))
-    (unless q
+  (let* ((pair (quest-find name))
+         (q (cdr pair)))
+    (unless pair
       (throw 'exception (format "没有任务%s" name)))
     (tg-display (format "任务：%s" (Quest-description q)))
     (tg-display (format "类型：%s  目标：%s" (Quest-type q) (Quest-target q)))
