@@ -215,6 +215,10 @@
     (when (Quest-rewards q)
       (tg-display (format "奖励：%s" (Quest-rewards q))))))
 
+(tg-defaction tg-accept (name)
+  "使用'accept <任务名>'接受指定任务"
+  (quest-accept name))
+
 (tg-defaction tg-save (name)
   "使用'save <名称>'保存游戏到saves/<名称>.sav"
   (unless name

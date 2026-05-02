@@ -20,7 +20,7 @@
 (defvar tg-current-input ""
   "浏览历史前保存的当前输入")
 
-(defvar tg-passive-actions '(tg-watch tg-help tg-status tg-quests tg-quest
+(defvar tg-passive-actions '(tg-watch tg-help tg-status tg-quests tg-quest tg-accept
                                       tg-save tg-load tg-quit tg-shop)
   "不消耗回合的动作列表，这些动作不触发 NPC 行为")
 

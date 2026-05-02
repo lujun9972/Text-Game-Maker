@@ -16,12 +16,30 @@
       (should (equal (Quest-type (cdr (assoc 'kill-rats quests-alist))) 'kill))
       (should (equal (Quest-type (cdr (assoc 'find-key quests-alist))) 'collect)))))
 
-(ert-deftest test-quest-init-sets-active ()
-  "quest-init should set all quests to active status."
+(ert-deftest test-quest-init-preserves-status ()
+  "quest-init should preserve status from config file."
   (test-with-temp-file "(test-quest \"Test\" kill rat 1 ((exp . 10)) inactive \"Done!\")"
     (test-with-globals-saved (quests-alist)
       (quest-init temp-file)
-      (should (eq (Quest-status (cdr (assoc 'test-quest quests-alist))) 'active)))))
+      (should (eq (Quest-status (cdr (assoc 'test-quest quests-alist))) 'inactive)))))
+
+(ert-deftest test-quest-accept-activates ()
+  "quest-accept should change inactive quest to active."
+  (test-with-globals-saved (quests-alist)
+    (let ((q (make-Quest :symbol 'test-q :description "Test" :type 'kill :target 'rat
+                          :count 1 :status 'inactive)))
+      (setq quests-alist (list (cons 'test-q q)))
+      (quest-accept 'test-q)
+      (should (eq (Quest-status q) 'active)))))
+
+(ert-deftest test-quest-accept-rejects-non-inactive ()
+  "quest-accept should reject quests that are not inactive."
+  (test-with-globals-saved (quests-alist)
+    (let ((q (make-Quest :symbol 'test-q :description "Test" :type 'kill :target 'rat
+                          :count 1 :status 'active)))
+      (setq quests-alist (list (cons 'test-q q)))
+      (should (equal (catch 'exception (quest-accept 'test-q))
+                     "任务test-q当前状态无法接受")))))
 
 ;; --- quest-track-kill ---
 
