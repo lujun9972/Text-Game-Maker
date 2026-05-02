@@ -280,6 +280,10 @@ cell      corridor
 | =load <名称>=            | 恢复游戏进度                     |
 | =quests=                 | 查看任务列表                     |
 | =quest <名称>=           | 查看指定任务详情                 |
+| =talk <NPC>=             | 与 NPC 对话                     |
+| =shop=                   | 查看商人商品                     |
+| =buy <物品>=             | 从商人购买物品                   |
+| =sell <物品>=            | 向商人出售物品                   |
 | =help=                   | 查看所有命令说明                 |
 | =help <命令>=            | 查看指定命令说明                 |
 | =quit=                   | 退出游戏                         |
@@ -488,6 +492,66 @@ NPC 行动信息通过 =tg-display= 输出到游戏 buffer：
 - 完成时显示提示文本并发放奖励
 - 奖励只发放一次（完成后不再触发）
 
+* 商店系统
+
+商店系统允许玩家与 NPC 商人进行买卖交易。
+
+** 货币
+
+单一金币体系。全局变量 =player-gold= 记录玩家持有金币，默认 0，可在游戏初始化时设置。
+
+** 商人标记
+
+在 =creature-config.el= 中，通过第 9 个元素标记商贩（=t=）：
+
+#+begin_src example
+(goblin-merchant "哥布林商人" ((hp . 30)) () () nil 15 nil t)
+;;                                                    第9个元素 = t 表示商贩
+#+end_src
+
+** 商品配置
+
+商品配置文件 =shop-config.el= 格式：
+
+#+begin_src example
+(npc-symbol sell-rate
+  ((item-symbol . price) ...))
+#+end_src
+
+- =npc-symbol=：对应 creature-config 中的商人 symbol
+- =sell-rate=：浮点数，卖出折扣率（如 0.3 = 30% 价格回收）
+- =item-symbol . price=：物品 symbol 和购买价格（cons pair）
+
+示例：
+
+#+begin_src example
+(goblin-merchant 0.3
+  ((bread . 10) (health-potion . 25) (iron-sword . 50)))
+(blacksmith 0.6
+  ((iron-shield . 40) (steel-sword . 80)))
+#+end_src
+
+** 命令
+
+| 命令            | 说明                                   |
+|-----------------+----------------------------------------|
+| =shop=          | 显示当前房间商人的商品列表和价格        |
+| =buy <物品>=    | 从商人购买物品，扣除金币                |
+| =sell <物品>=   | 向商人出售物品，获得 price × sell-rate 金币 |
+
+** 交易逻辑
+
+- =buy=：检查商人存在、商品在售、金币足够 → 扣除金币，物品加入背包，从商品列表移除
+- =sell=：检查商人存在、物品在背包 → 按 基础价格 × sell-rate 计算卖出价（最低 1 金币），物品从背包移除，加入商人商品列表
+- 卖出不在商人原商品列表中的物品时，使用默认基础价格 5
+
+** 初始化
+
+#+begin_src elisp
+(shop-init (expand-file-name "shop-config.el" config-dir))
+(setq player-gold 20)  ; 设置初始金币
+#+end_src
+
 * API 参考
 
 ** =text-game-maker.el= — 主入口
@@ -587,6 +651,7 @@ Creature 结构体：
 | =death-trigger=   | 击败触发                  |
 | =exp-reward=      | 经验奖励                  |
 | =behaviors=       | NPC 主动行为规则列表      |
+| =shopkeeper=      | 是否为商人（=t= / =nil=） |
 
 ** =level-system.el= — 升级系统
 
@@ -651,6 +716,20 @@ Quest 结构体：
 | =rewards=             | 奖励列表                    |
 | =status=              | 任务状态                    |
 | =description-complete=| 完成提示文本                |
+
+** =shop-system.el= — 商店系统
+
+| 函数/变量           | 说明                                       |
+|---------------------+--------------------------------------------|
+| =player-gold=       | 玩家持有金币                                |
+| =shop-alist=        | 商品列表缓存                                |
+| =shop-init=         | 从配置文件加载商品                          |
+| =shop-get-shopkeeper= | 获取当前房间的商人 Creature              |
+| =shop-get-goods=    | 获取商人商品列表                            |
+| =shop-get-sell-rate= | 获取商人卖出折扣率                         |
+| =shop-get-item-price= | 获取商人商品价格                           |
+| =shop-remove-item=  | 从商人商品列表移除物品                      |
+| =shop-add-item=     | 向商人商品列表添加物品                      |
 
 ** =tg-mode.el= — 游戏主模式
 
@@ -753,6 +832,8 @@ Quest 结构体：
 | =npc-behavior.el=          | NPC 主动行为系统             |
 | =save-system.el=           | 存档系统                     |
 | =quest-system.el=          | 任务系统                     |
+| =dialog-system.el=         | 对话树系统                   |
+| =shop-system.el=           | 商店/交易系统                |
 | =tg-config-generator.el=   | 配置文件生成器               |
 | =sample/=                  | 示例游戏目录                 |
 | =test/=                    | ERT 单元测试目录             |
@@ -760,7 +841,7 @@ Quest 结构体：
 
 * 测试
 
-项目包含 210+ 个 ERT 单元测试，覆盖所有核心模块。
+项目包含 270+ 个 ERT 单元测试，覆盖所有核心模块。
 
 运行测试：
 
@@ -790,6 +871,8 @@ emacs --batch -L . -L test \
 | =test-npc-behavior.el=          |       20 | 条件评估, 动作执行, 行为运行器     |
 | =test-save-system.el=          |        8 | 序列化, 保存/恢复, 往返测试        |
 | =test-quest-system.el=          |       14 | 任务加载, 进度追踪, 奖励发放       |
+| =test-dialog-system.el=         |       18 | 对话加载, 条件评估, 选项处理       |
+| =test-shop-system.el=           |       12 | 商品加载, 商人查找, 买卖逻辑       |
 
 * 常见问题
 
@@ -817,6 +900,15 @@ emacs --batch -L . -L test \
 #+end_src
 
 * 更新日志
+
+** [2026-05-02] 商店系统与 Readline 模式
+
+- 新增 =shop-system.el= 商店/交易模块
+- Creature 结构体新增 =shopkeeper= 字段
+- 新增 =shop= / =buy= / =sell= 命令
+- 支持 NPC 商人、金币货币、可配置卖出折扣率
+- tg-mode 新增命令历史浏览（up/down, M-p/M-n）
+- tg-mode 新增 Tab 补全命令名
 
 ** [2026-05-01] 存档系统与任务系统
 

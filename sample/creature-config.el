@@ -24,3 +24,6 @@
   (((player-in-room) say "擅闯武器库者，杀无赦！")
    ((hp-below 30) buff attack 3)
    ((always) attack)))
+(goblin-merchant "一个精明的哥布林商人，推着装满货物的小车" ((hp . 30) (attack . 3) (defense . 2)) () () nil 15
+  (((player-in-room) say "来来来，看看我的好东西！"))
+  t)

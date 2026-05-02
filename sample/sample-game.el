@@ -20,6 +20,8 @@
     (level-init (expand-file-name "level-config.el" sample-dir))
     (quest-init (expand-file-name "quest-config.el" sample-dir))
     (dialog-init (expand-file-name "dialog-config.el" sample-dir))
+    (shop-init (expand-file-name "shop-config.el" sample-dir))
+    (setq player-gold 20)
     (tg-mode)
     (tg-display (tg-prompt-string))
     (tg-display (describe current-room))
@@ -31,6 +33,7 @@
     (tg-display "战斗提示: 先去走廊和武器库收集装备，再去挑战骷髅王！")
     (tg-display "任务提示: 输入 quests 查看任务列表，quest <名称> 查看任务详情！")
     (tg-display "对话提示: 输入 talk <NPC名称> 与NPC对话！")
+    (tg-display "商店提示: 输入 shop 查看商品，buy <物品> 购买，sell <物品> 出售！")
     (tg-display "")
     (tg-messages)))
 

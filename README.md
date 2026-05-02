@@ -14,6 +14,7 @@
 - NPC 行为系统：NPC 可根据条件主动攻击、移动、对话、施放状态效果
 - 存档系统：支持游戏进度保存与恢复，自动序列化玩家、房间、生物状态
 - 任务系统：支持击杀、收集、探索、对话四种任务类型，自动追踪进度与奖励发放
+- 商店系统：NPC 商人、金币货币、买卖物品、可配置卖出折扣率
 - 触发器系统：为房间、物品、生物提供丰富的触发事件机制
 - 自定义 major mode（`tg-mode`）：提供交互式游戏命令行界面，支持 eldoc
 - 可扩展的 action 系统：通过 `tg-defaction` 宏轻松定义新的游戏命令
@@ -64,6 +65,8 @@ M-x play-sample-game
 | `npc-behavior.el` | NPC 主动行为系统 |
 | `save-system.el` | 存档系统 |
 | `quest-system.el` | 任务系统 |
+| `dialog-system.el` | 对话树系统 |
+| `shop-system.el` | 商店/交易系统 |
 | `tg-config-generator.el` | 配置文件生成器 |
 | `sample/` | 示例游戏目录 |
 | `test/` | ERT 单元测试目录 |
@@ -71,7 +74,7 @@ M-x play-sample-game
 
 ## 测试
 
-项目包含 210+ 个 ERT 单元测试，覆盖所有核心模块。
+项目包含 270+ 个 ERT 单元测试，覆盖所有核心模块。
 
 ```sh
 bash run-tests.sh
