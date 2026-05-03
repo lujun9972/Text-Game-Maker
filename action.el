@@ -40,10 +40,8 @@
   (let ((new-room-symbol (nth directory (beyond-rooms (Room-symbol current-room) room-map))))
     (unless new-room-symbol
       (throw 'exception "那里没有路"))
-    ;; 触发离开事件
     (tg-run-trigger Room-out-trigger current-room)
     (setq current-room (get-room-by-symbol new-room-symbol))
-    ;; 触发进入事件
     (tg-run-trigger Room-in-trigger current-room)
     (tg-display (describe current-room))
     (tg-track-quest 'explore new-room-symbol)))

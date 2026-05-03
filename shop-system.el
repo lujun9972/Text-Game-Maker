@@ -39,15 +39,19 @@
         (when (and cr (Creature-shopkeeper cr))
           (cl-return cr))))))
 
+(defun shop-get-config (npc-symbol)
+  "返回NPC-SYMBOL对应的ShopConfig，无则返回nil."
+  (cdr (assoc npc-symbol shop-alist)))
+
 (defun shop-get-goods (npc-symbol)
   "返回NPC-SYMBOL对应的商品列表."
-  (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry (ShopConfig-goods (cdr entry)))))
+  (when-let* ((config (shop-get-config npc-symbol)))
+    (ShopConfig-goods config)))
 
 (defun shop-get-sell-rate (npc-symbol)
   "返回NPC-SYMBOL对应的卖出折扣率."
-  (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry (ShopConfig-sell-rate (cdr entry)))))
+  (when-let* ((config (shop-get-config npc-symbol)))
+    (ShopConfig-sell-rate config)))
 
 (defun shop-get-item-price (npc-symbol item-symbol)
   "返回NPC-SYMBOL的商品列表中ITEM-SYMBOL的价格."
@@ -57,15 +61,13 @@
 
 (defun shop-remove-item (npc-symbol item-symbol)
   "从NPC-SYMBOL的商品列表中移除ITEM-SYMBOL."
-  (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry
-      (setf (ShopConfig-goods (cdr entry))
-            (assq-delete-all item-symbol (ShopConfig-goods (cdr entry)))))))
+  (when-let* ((config (shop-get-config npc-symbol)))
+    (setf (ShopConfig-goods config)
+          (assq-delete-all item-symbol (ShopConfig-goods config)))))
 
 (defun shop-add-item (npc-symbol item-symbol price)
   "向NPC-SYMBOL的商品列表中添加ITEM-SYMBOL."
-  (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry
-      (push (cons item-symbol price) (ShopConfig-goods (cdr entry))))))
+  (when-let* ((config (shop-get-config npc-symbol)))
+    (push (cons item-symbol price) (ShopConfig-goods config))))
 
 (provide 'shop-system)
