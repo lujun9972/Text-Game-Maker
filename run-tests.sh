@@ -12,6 +12,7 @@ emacs --batch --no-site-file --no-init-file \
     (require 'ert)
     (require 'cl-macs)
     (require 'thingatpt)
+    (require 'text-game-maker)
     (require 'test-text-game-maker)
     (require 'test-room-maker)
     (require 'test-inventory-maker)
