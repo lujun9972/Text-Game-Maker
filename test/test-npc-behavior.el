@@ -78,10 +78,10 @@
 
 (ert-deftest test-npc-attack-player-deals-damage ()
   "npc attack should deal damage to player."
-  (test-with-globals-saved (display-fn creatures-alist myself tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself tg-over-p)
     (let ((goblin (make-Creature :symbol 'goblin :attr '((attack . 8))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (defense . 3))))
       (setq tg-over-p nil)
       (npc-execute-action goblin '(attack))
@@ -89,10 +89,10 @@
 
 (ert-deftest test-npc-attack-player-kills ()
   "npc attack should set tg-over-p when player dies."
-  (test-with-globals-saved (display-fn creatures-alist myself tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself tg-over-p)
     (let ((goblin (make-Creature :symbol 'goblin :attr '((attack . 50))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 10) (defense . 0))))
       (setq tg-over-p nil)
       (npc-execute-action goblin '(attack))
@@ -102,10 +102,10 @@
 
 (ert-deftest test-npc-say-displays-message ()
   "npc say should display message via tg-display."
-  (test-with-globals-saved (display-fn)
+  (test-with-globals-saved (tg-display-fn)
     (let ((goblin (make-Creature :symbol 'goblin :attr '((hp . 25))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (npc-execute-action goblin '(say "Hello!"))
       (should (cl-some (lambda (s) (string-match-p "goblin" s)) (mapcar #'car output))))))
 
@@ -113,14 +113,14 @@
 
 (ert-deftest test-npc-move-random ()
   "npc move random should move creature to an adjacent room."
-  (test-with-globals-saved (rooms-alist room-map current-room display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room tg-display-fn)
     (let* ((room1 (make-Room :symbol 'room1 :creature '(goblin)))
            (room2 (make-Room :symbol 'room2 :creature nil))
            (goblin (make-Creature :symbol 'goblin :attr '((hp . 25)))))
       (setq rooms-alist (list (cons 'room1 room1) (cons 'room2 room2)))
       (setq room-map '((room1 room2)))
       (setq current-room room1)
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (npc-execute-action goblin '(move random))
       (should-not (creature-exist-in-room-p room1 'goblin)))))
 
@@ -128,17 +128,17 @@
 
 (ert-deftest test-npc-buff-self ()
   "npc buff should increase creature's own attr."
-  (test-with-globals-saved (display-fn)
+  (test-with-globals-saved (tg-display-fn)
     (let ((goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 5)))))
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (npc-execute-action goblin '(buff attack 3))
       (should (= (cdr (assoc 'attack (Creature-attr goblin))) 8)))))
 
 (ert-deftest test-npc-debuff-player ()
   "npc debuff should decrease player's attr."
-  (test-with-globals-saved (display-fn myself)
+  (test-with-globals-saved (tg-display-fn myself)
     (let ((goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 5)))))
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (defense . 5))))
       (npc-execute-action goblin '(debuff defense 2))
       (should (= (cdr (assoc 'defense (Creature-attr myself))) 3)))))
@@ -147,12 +147,12 @@
 
 (ert-deftest test-npc-run-behaviors-matches-first-rule ()
   "npc-run-behaviors should execute only the first matching rule."
-  (test-with-globals-saved (display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
     (let* ((goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 5))
                                   :behaviors '(((always) say "first") ((always) say "second"))))
            (room (make-Room :symbol 'room1 :creature '(hero goblin)))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
       (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero myself)))
       (setq rooms-alist (list (cons 'room1 room)))
@@ -164,9 +164,9 @@
 
 (ert-deftest test-npc-run-behaviors-skips-myself ()
   "npc-run-behaviors should skip myself even if it has behaviors."
-  (test-with-globals-saved (display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
     (let* ((output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))
                                   :behaviors '(((always) say "I act!"))))
       (setq creatures-alist (list (cons 'hero myself)))
@@ -179,11 +179,11 @@
 
 (ert-deftest test-npc-run-behaviors-skips-dead-npc ()
   "npc-run-behaviors should skip NPCs with HP <= 0."
-  (test-with-globals-saved (display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
     (let* ((goblin (make-Creature :symbol 'goblin :attr '((hp . 0))
                                   :behaviors '(((always) say "I'm dead"))))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
       (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero myself)))
       (setq rooms-alist (list (cons 'room1 (make-Room :symbol 'room1 :creature '(hero goblin)))))
@@ -195,10 +195,10 @@
 
 (ert-deftest test-npc-run-behaviors-no-behaviors-noop ()
   "npc-run-behaviors should do nothing for NPCs with nil behaviors."
-  (test-with-globals-saved (display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
+  (test-with-globals-saved (tg-display-fn creatures-alist myself rooms-alist room-map current-room tg-over-p)
     (let* ((goblin (make-Creature :symbol 'goblin :attr '((hp . 25)) :behaviors nil))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
       (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero myself)))
       (setq rooms-alist (list (cons 'room1 (make-Room :symbol 'room1 :creature '(hero goblin)))))

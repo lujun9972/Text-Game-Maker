@@ -68,7 +68,7 @@
 
 (defun build-room-map(room-map-config-file)
   "根据`room-map-config-file'中的配置信息创建地图"
-  (let* ((file-lines (split-string (file-content room-map-config-file) "[\r\n]")))
+  (let* ((file-lines (split-string (tg-file-content room-map-config-file) "[\r\n]")))
 	(mapcar (lambda(line)
 			  (mapcar #'intern (split-string line)))
 			file-lines)))

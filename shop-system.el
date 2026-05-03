@@ -26,7 +26,7 @@
 
 (defun shop-init (config-file)
   "从CONFIG-FILE加载商品配置."
-  (let ((shop-entities (read-from-whole-string (file-content config-file))))
+  (let ((shop-entities (read-from-whole-string (tg-file-content config-file))))
     (setq shop-alist (mapcar #'build-shop-entry shop-entities))))
 
 ;; --- Helpers ---

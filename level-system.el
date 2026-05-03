@@ -20,7 +20,7 @@
 
 (defun level-init (config-file)
   "从 CONFIG-FILE 加载升级配置。"
-  (let ((config (read-from-whole-string (file-content config-file))))
+  (let ((config (read-from-whole-string (tg-file-content config-file))))
     (setq level-exp-table (cdr (assoc 'level-exp-table config)))
     (setq level-up-bonus-points (cadr (assoc 'level-up-bonus-points config)))
     (setq auto-upgrade-attrs (cadr (assoc 'auto-upgrade-attrs config)))))

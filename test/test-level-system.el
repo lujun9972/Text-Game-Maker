@@ -39,26 +39,26 @@
 
 (ert-deftest test-add-exp-accumulates ()
   "add-exp-to-creature should add exp to creature's attr."
-  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs display-fn)
+  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs tg-display-fn)
     (setq level-exp-table '(0 100 250))
     (setq level-up-bonus-points 3)
     (setq auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (add-exp-to-creature cr 50)
       (should (= (cdr (assoc 'exp (Creature-attr cr))) 50))
       (should (= (cdr (assoc 'level (Creature-attr cr))) 1)))))
 
 (ert-deftest test-add-exp-triggers-level-up ()
   "add-exp-to-creature should level up when exp reaches threshold."
-  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs display-fn)
+  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs tg-display-fn)
     (setq level-exp-table '(0 100 250))
     (setq level-up-bonus-points 3)
     (setq auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (add-exp-to-creature cr 120)
       (should (= (cdr (assoc 'exp (Creature-attr cr))) 120))
       (should (= (cdr (assoc 'level (Creature-attr cr))) 2))
@@ -67,13 +67,13 @@
 
 (ert-deftest test-add-exp-multi-level-up ()
   "add-exp-to-creature should handle multiple level ups at once."
-  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs display-fn)
+  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs tg-display-fn)
     (setq level-exp-table '(0 100 250 500))
     (setq level-up-bonus-points 3)
     (setq auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (add-exp-to-creature cr 300)
       (should (= (cdr (assoc 'exp (Creature-attr cr))) 300))
       (should (= (cdr (assoc 'level (Creature-attr cr))) 3))
@@ -82,13 +82,13 @@
 
 (ert-deftest test-add-exp-max-level ()
   "add-exp-to-creature should not level up beyond exp-table range."
-  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs display-fn)
+  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs tg-display-fn)
     (setq level-exp-table '(0 100 250))
     (setq level-up-bonus-points 3)
     (setq auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 200) (level . 2) (bonus-points . 3))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (add-exp-to-creature cr 500)
       (should (= (cdr (assoc 'exp (Creature-attr cr))) 700))
       ;; Already at max level (2), exp-table has entries for 1->2 only
@@ -96,13 +96,13 @@
 
 (ert-deftest test-add-exp-no-level-attrs ()
   "add-exp-to-creature should do nothing special when creature has no level/exp attrs."
-  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs display-fn)
+  (test-with-globals-saved (level-exp-table level-up-bonus-points auto-upgrade-attrs tg-display-fn)
     (setq level-exp-table '(0 100))
     (setq level-up-bonus-points 3)
     (setq auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 6))))
           (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (add-exp-to-creature cr 50)
       ;; exp not in attr, so no effect
       (should (null (assoc 'exp (Creature-attr cr)))))))

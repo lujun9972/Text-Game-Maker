@@ -47,7 +47,7 @@
 
 (defun dialog-init (config-file)
   "从CONFIG-FILE加载对话配置."
-  (let ((dialog-entities (read-from-whole-string (file-content config-file))))
+  (let ((dialog-entities (read-from-whole-string (tg-file-content config-file))))
     (setq dialogs-alist (mapcar #'build-dialog dialog-entities))))
 
 ;; --- Condition evaluation ---

@@ -2,7 +2,7 @@
 
 (require 'cl-lib)
 
-(defun file-content(file)
+(defun tg-file-content(file)
   "返回file的文件内容"
   (with-temp-buffer
 	(insert-file-contents file)
@@ -33,14 +33,14 @@ FIELDS: 解构和构造用的字段名列表"
                  (,constructor ,@(cl-mapcan (lambda (f) (list (intern (format ":%s" f)) f)) fields)))))
        (defun ,init-fn (config-file)
          ,(format "从CONFIG-FILE加载%s配置." name)
-         (let ((entities (read-from-whole-string (file-content config-file))))
+         (let ((entities (read-from-whole-string (tg-file-content config-file))))
            (setq ,alist-var (mapcar #',build-fn entities)))))))
 
 (require 'tg-mode)
-(defvar display-fn #'tg-mprinc
+(defvar tg-display-fn #'tg-mprinc
   "显示信息的函数")
 (defun tg-display (&rest args)
-  (apply display-fn args))
+  (apply tg-display-fn args))
 (require 'room-maker)
 (require 'inventory-maker)
 (require 'creature-maker)

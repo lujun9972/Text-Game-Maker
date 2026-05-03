@@ -43,7 +43,7 @@
 
 (defun build-creatures(creature-config-file)
   "根据`creature-config-file'中的配置信息创建各个creature"
-  (let ((creature-entities (read-from-whole-string (file-content creature-config-file))))
+  (let ((creature-entities (read-from-whole-string (tg-file-content creature-config-file))))
 	(mapcar #'build-creature creature-entities)))
 
 ;; 定义初始化函数

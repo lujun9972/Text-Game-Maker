@@ -88,10 +88,10 @@
 
 (ert-deftest test-dialog-apply-effects-exp ()
   "dialog-apply-effects should grant exp."
-  (test-with-globals-saved (display-fn level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (tg-display-fn level-exp-table level-up-bonus-points auto-upgrade-attrs)
     (let* ((opt (make-DialogOption :effects '((exp . 50))))
            (cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0)))))
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (setq level-exp-table '(0 100))
       (setq level-up-bonus-points 3)
       (setq auto-upgrade-attrs '((hp . 5)))
@@ -103,10 +103,10 @@
 
 (ert-deftest test-dialog-apply-effects-item ()
   "dialog-apply-effects should add item to player inventory."
-  (test-with-globals-saved (display-fn creatures-alist inventorys-alist)
+  (test-with-globals-saved (tg-display-fn creatures-alist inventorys-alist)
     (let* ((opt (make-DialogOption :effects '((item . potion))))
            (cr (make-Creature :symbol 'hero :attr '((hp . 100)))))
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (setq inventorys-alist (list (cons 'potion (make-Inventory :symbol 'potion :description "Potion" :type '(usable)))))
       (let ((old-myself myself))
         (setq myself cr)
@@ -116,10 +116,10 @@
 
 (ert-deftest test-dialog-apply-effects-bonus-points ()
   "dialog-apply-effects should grant bonus-points."
-  (test-with-globals-saved (display-fn)
+  (test-with-globals-saved (tg-display-fn)
     (let* ((opt (make-DialogOption :effects '((bonus-points . 2))))
            (cr (make-Creature :symbol 'hero :attr '((hp . 100) (bonus-points . 0)))))
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (let ((old-myself myself))
         (setq myself cr)
         (dialog-apply-effects opt)
@@ -128,11 +128,11 @@
 
 (ert-deftest test-dialog-apply-effects-trigger ()
   "dialog-apply-effects should call trigger function."
-  (test-with-globals-saved (display-fn)
+  (test-with-globals-saved (tg-display-fn)
     (let (trigger-called)
       (let ((trigger-fn (lambda () (setq trigger-called t))))
         (let ((opt (make-DialogOption :effects `((trigger . ,trigger-fn)))))
-          (setq display-fn #'ignore)
+          (setq tg-display-fn #'ignore)
           (dialog-apply-effects opt)
           (should trigger-called))))))
 
@@ -140,31 +140,31 @@
 
 (ert-deftest test-dialog-start-success ()
   "dialog-start should display greeting and options, set dialog-pending."
-  (test-with-globals-saved (dialogs-alist display-fn dialog-pending)
+  (test-with-globals-saved (dialogs-alist tg-display-fn dialog-pending)
     (let* ((opt (make-DialogOption :text "Hello" :response "Hi" :condition nil))
            (dialog (make-Dialog :npc 'guard :greeting "What?" :options (list opt)))
            (output nil))
       (setq dialogs-alist (list (cons 'guard dialog)))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (dialog-start 'guard)
       (should (eq dialog-pending dialog))
       (should (cl-some (lambda (s) (string-match-p "What?" s)) (mapcar #'car output))))))
 
 (ert-deftest test-dialog-start-no-dialog ()
   "dialog-start should throw when NPC has no dialog."
-  (test-with-globals-saved (dialogs-alist display-fn dialog-pending)
+  (test-with-globals-saved (dialogs-alist tg-display-fn dialog-pending)
     (setq dialogs-alist nil)
-    (setq display-fn #'ignore)
+    (setq tg-display-fn #'ignore)
     (should (equal (catch 'exception (dialog-start 'nobody)) "无法与nobody对话"))))
 
 (ert-deftest test-dialog-start-no-visible-options ()
   "dialog-start should show message when no options are visible."
-  (test-with-globals-saved (dialogs-alist display-fn dialog-pending quests-alist)
+  (test-with-globals-saved (dialogs-alist tg-display-fn dialog-pending quests-alist)
     (let* ((opt (make-DialogOption :text "Hidden" :response "R" :condition '(quest-active missing)))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (output nil))
       (setq dialogs-alist (list (cons 'guard dialog)))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq quests-alist nil)
       (dialog-start 'guard)
       (should (null dialog-pending))
@@ -174,36 +174,36 @@
 
 (ert-deftest test-dialog-handle-choice-valid ()
   "dialog-handle-choice should process valid choice and clear dialog-pending."
-  (test-with-globals-saved (dialog-pending display-fn)
+  (test-with-globals-saved (dialog-pending tg-display-fn)
     (let* ((opt (make-DialogOption :text "A" :response "Response A" :condition nil))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (output nil))
       (setq dialog-pending dialog)
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (dialog-handle-choice "1")
       (should (null dialog-pending))
       (should (cl-some (lambda (s) (string-match-p "Response A" s)) (mapcar #'car output))))))
 
 (ert-deftest test-dialog-handle-choice-invalid ()
   "dialog-handle-choice should keep dialog-pending on invalid input."
-  (test-with-globals-saved (dialog-pending display-fn)
+  (test-with-globals-saved (dialog-pending tg-display-fn)
     (let* ((opt (make-DialogOption :text "A" :response "R" :condition nil))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (output nil))
       (setq dialog-pending dialog)
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (dialog-handle-choice "5")
       (should (eq dialog-pending dialog))
       (should (cl-some (lambda (s) (string-match-p "请输入有效的选项编号" s)) (mapcar #'car output))))))
 
 (ert-deftest test-dialog-handle-choice-applies-effects ()
   "dialog-handle-choice should apply effects on valid choice."
-  (test-with-globals-saved (dialog-pending display-fn level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (dialog-pending tg-display-fn level-exp-table level-up-bonus-points auto-upgrade-attrs)
     (let* ((opt (make-DialogOption :text "A" :response "R" :condition nil :effects '((exp . 30))))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0)))))
       (setq dialog-pending dialog)
-      (setq display-fn #'ignore)
+      (setq tg-display-fn #'ignore)
       (setq level-exp-table '(0 100))
       (setq level-up-bonus-points 3)
       (setq auto-upgrade-attrs '((hp . 5)))

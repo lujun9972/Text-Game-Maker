@@ -187,12 +187,12 @@
       (tg-messages)
       (should (equal major-mode 'text-mode)))))
 
-;; --- display-fn ---
+;; --- tg-display-fn ---
 
-(ert-deftest test-display-fn-is-tg-mprinc ()
-  "display-fn should be tg-mprinc, not message."
+(ert-deftest test-tg-display-fn-is-tg-mprinc ()
+  "tg-display-fn should be tg-mprinc, not message."
   (require 'text-game-maker)
-  (should (eq display-fn #'tg-mprinc)))
+  (should (eq tg-display-fn #'tg-mprinc)))
 
 ;; --- tg-eldoc-function ---
 
@@ -327,13 +327,13 @@
         (should (search-backward ">" nil t))
         (should (get-text-property (point) 'read-only))))))
 
-;; --- action.el display-fn ---
+;; --- action.el tg-display-fn ---
 
-(ert-deftest test-action-el-not-redefining-display-fn ()
-  "action.el should not have its own defvar for display-fn."
+(ert-deftest test-action-el-not-redefining-tg-display-fn ()
+  "action.el should not have its own defvar for tg-display-fn."
   (with-temp-buffer
     (insert-file-contents "action.el")
-    (should-not (string-match-p "defvar display-fn" (buffer-string)))))
+    (should-not (string-match-p "defvar tg-display-fn" (buffer-string)))))
 
 ;; --- Command history ---
 
@@ -506,10 +506,10 @@
 
 (ert-deftest test-tg-complete-ambiguous-shows-candidates ()
   "tg-complete-command on ambiguous prefix should show candidates via tg-display."
-  (test-with-globals-saved (tg-valid-actions display-fn)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn)
     (setq tg-valid-actions '(tg-talk tg-take))
     (let (output)
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (with-temp-buffer
         (tg-mode)
         (insert ">ta")

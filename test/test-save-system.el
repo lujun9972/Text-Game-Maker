@@ -50,13 +50,13 @@
 
 (ert-deftest test-save-game-creates-file ()
   "tg-save-game should create a save file."
-  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself tg-display-fn)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(potion) :creature '(hero goblin)))
            (goblin (make-Creature :symbol 'goblin :attr '((hp . 25))))
            (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword)))
            (save-file (make-temp-file "tg-save-test-" nil ".sav"))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
       (setq current-room room)
@@ -66,14 +66,14 @@
       (should (file-exists-p save-file))
       (delete-file save-file))))
 
-(ert-deftest test-save-game-file-content ()
+(ert-deftest test-save-game-tg-file-content ()
   "tg-save-game should write correct alist data."
-  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself display-fn)
+  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself tg-display-fn)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(torch) :creature '(hero)))
            (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword) :equipment '(shield)))
            (save-file (make-temp-file "tg-save-test-" nil ".sav"))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
       (setq current-room room)
@@ -82,7 +82,7 @@
       (unwind-protect
           (progn
             (tg-save-game save-file)
-            (let* ((content (file-content save-file))
+            (let* ((content (tg-file-content save-file))
                    (data (read content)))
               ;; Check player data
               (should (equal (cdr (assoc 'current-room data)) 'room1))
@@ -97,14 +97,14 @@
 
 (ert-deftest test-save-load-round-trip ()
   "Saving and loading should preserve game state."
-  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself display-fn
+  (test-with-globals-saved (rooms-alist room-map current-room creatures-alist myself tg-display-fn
                                         tg-config-dir tg-over-p)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(torch) :creature '(hero goblin)))
            (goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 6)) :inventory '() :equipment '()))
            (hero (make-Creature :symbol 'hero :attr '((hp . 85) (attack . 10)) :inventory '(sword) :equipment '(shield)))
            (save-file (make-temp-file "tg-save-test-" nil ".sav"))
            (output nil))
-      (setq display-fn (lambda (&rest args) (push args output)))
+      (setq tg-display-fn (lambda (&rest args) (push args output)))
       (setq rooms-alist (list (cons 'room1 room)))
       (setq room-map '((room1)))
       (setq current-room room)
@@ -132,8 +132,8 @@
 
 (ert-deftest test-load-nonexistent-file ()
   "tg-load-game should throw exception for nonexistent file."
-  (test-with-globals-saved (display-fn)
-    (setq display-fn #'ignore)
+  (test-with-globals-saved (tg-display-fn)
+    (setq tg-display-fn #'ignore)
     (should (equal (catch 'exception (tg-load-game "/nonexistent/path/save.sav"))
                    "存档文件不存在"))))
 
