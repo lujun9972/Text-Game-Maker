@@ -136,27 +136,27 @@
 
 (ert-deftest test-tg-watch-inventory ()
   "tg-watch with inventory symbol should describe the inventory."
-  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn inventorys-alist)
+  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn tg-inventorys-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :inventory '(potion)))
            (inv (make-Inventory :symbol 'potion :description "A potion" :type '(usable) :effects nil)))
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-display-fn #'ignore)
       (let ((result (tg-watch 'potion)))
         (should (string-match-p "potion" result))))))
 
 (ert-deftest test-tg-watch-nonexistent-item ()
   "tg-watch should throw exception for nonexistent item in room."
-  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn inventorys-alist)
+  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn tg-inventorys-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-Room :symbol 'room1 :description "A room")))
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist nil)
+      (setq tg-inventorys-alist nil)
       (setq tg-display-fn #'ignore)
       (should (equal (catch 'exception (tg-watch 'ghost))
                      "房间中没有ghost")))))
@@ -164,7 +164,7 @@
 (ert-deftest test-tg-watch-creature ()
   "tg-watch should describe a creature in the room."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist)
+                                        tg-inventorys-alist tg-creatures-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(goblin)))
            (cr (make-Creature :symbol 'goblin :description "A goblin"
@@ -172,7 +172,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist nil)
+      (setq tg-inventorys-alist nil)
       (setq tg-creatures-alist (list (cons 'goblin cr)))
       (setq tg-display-fn #'ignore)
       (let ((result (tg-watch 'goblin)))
@@ -183,7 +183,7 @@
 (ert-deftest test-tg-take-existing-item ()
   "tg-take should move item from room to creature inventory."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :inventory '(potion)))
            (inv (make-Inventory :symbol 'potion :description "A potion" :type '(usable)))
@@ -191,7 +191,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -214,7 +214,7 @@
 (ert-deftest test-tg-take-triggers-take-trigger ()
   "tg-take should call take-trigger on the inventory."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-Room :symbol 'room1 :description "A room" :inventory '(potion)))
           (inv (make-Inventory :symbol 'potion :description "A potion" :type '(usable)
@@ -223,7 +223,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -236,7 +236,7 @@
 (ert-deftest test-tg-drop-carried-item ()
   "tg-drop should move item from creature to room."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room"))
            (inv (make-Inventory :symbol 'potion :description "A potion" :type '(usable)))
@@ -244,7 +244,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -271,7 +271,7 @@
 (ert-deftest test-tg-drop-triggers-drop-trigger ()
   "tg-drop should call drop-trigger on the inventory."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-Room :symbol 'room1 :description "A room"))
           (inv (make-Inventory :symbol 'potion :description "A potion" :type '(usable)
@@ -280,7 +280,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -293,7 +293,7 @@
 (ert-deftest test-tg-use-usable-item ()
   "tg-use should apply effects and remove consumable item."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room"))
            (inv (make-Inventory :symbol 'potion :description "A potion"
@@ -303,7 +303,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -330,7 +330,7 @@
 (ert-deftest test-tg-use-not-consumable ()
   "tg-use should throw exception for non-consumable items."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room"))
            (inv (make-Inventory :symbol 'rock :description "A rock"
@@ -339,7 +339,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'rock inv)))
+      (setq tg-inventorys-alist (list (cons 'rock inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -351,7 +351,7 @@
 (ert-deftest test-tg-wear-wearable-item ()
   "tg-wear should equip item from creature's inventory."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room"))
            (inv (make-Inventory :symbol 'armor :description "Steel armor"
@@ -361,7 +361,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'armor inv)))
+      (setq tg-inventorys-alist (list (cons 'armor inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -388,7 +388,7 @@
 (ert-deftest test-tg-wear-not-wearable ()
   "tg-wear should throw exception for non-wearable items."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room"))
            (inv (make-Inventory :symbol 'potion :description "A potion"
@@ -398,7 +398,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'potion inv)))
+      (setq tg-inventorys-alist (list (cons 'potion inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -408,7 +408,7 @@
 (ert-deftest test-tg-wear-triggers-wear-trigger ()
   "tg-wear should call wear-trigger on the inventory."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((room (make-Room :symbol 'room1 :description "A room"))
           (inv (make-Inventory :symbol 'armor :description "Steel armor"
@@ -419,7 +419,7 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq inventorys-alist (list (cons 'armor inv)))
+      (setq tg-inventorys-alist (list (cons 'armor inv)))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
       (setq tg-display-fn #'ignore)
@@ -480,7 +480,7 @@
 (ert-deftest test-tg-attack-target-in-room ()
   "tg-attack should deal damage to target creature."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        inventorys-alist tg-creatures-alist tg-myself)
+                                        tg-inventorys-alist tg-creatures-alist tg-myself)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(goblin)))
            (cr (make-Creature :symbol 'goblin :description "A goblin"
@@ -644,12 +644,12 @@
 
 (ert-deftest test-tg-upgrade-allocates-points ()
   "tg-upgrade should increase target attr and decrease bonus-points."
-  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3) (bonus-points . 3)))))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
@@ -659,12 +659,12 @@
 
 (ert-deftest test-tg-upgrade-insufficient-points ()
   "tg-upgrade should throw when not enough bonus-points."
-  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (bonus-points . 1)))))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
@@ -673,12 +673,12 @@
 
 (ert-deftest test-tg-upgrade-invalid-attr ()
   "tg-upgrade should throw when attr does not exist."
-  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'hero :attr '((hp . 100) (bonus-points . 3)))))
       (setq tg-creatures-alist (list (cons 'hero cr)))
       (setq tg-myself cr)
@@ -687,12 +687,12 @@
 
 (ert-deftest test-tg-upgrade-no-bonus-attr ()
   "tg-upgrade should throw when creature has no bonus-points attr."
-  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let ((cr (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 6)))))
       (setq tg-creatures-alist (list (cons 'goblin cr)))
       (setq tg-myself cr)
@@ -704,12 +704,12 @@
 (ert-deftest test-tg-attack-gives-exp-on-kill ()
   "tg-attack should add exp to player when target is killed."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+                                        tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100 250))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100 250))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
            (rat (make-Creature :symbol 'rat :description "A rat"
                                :attr '((hp . 5) (attack . 1) (defense . 0)) :exp-reward 10)))
@@ -726,12 +726,12 @@
 (ert-deftest test-tg-attack-exp-triggers-level-up ()
   "tg-attack exp gain should trigger level up when threshold reached."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        tg-creatures-alist tg-myself level-exp-table level-up-bonus-points auto-upgrade-attrs)
+                                        tg-creatures-alist tg-myself tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (setq tg-display-fn #'ignore)
-    (setq level-exp-table '(0 100 250))
-    (setq level-up-bonus-points 3)
-    (setq auto-upgrade-attrs '((hp . 5)))
+    (setq tg-level-exp-table '(0 100 250))
+    (setq tg-level-up-bonus-points 3)
+    (setq tg-auto-upgrade-attrs '((hp . 5)))
     (let* ((room (make-Room :symbol 'room1 :description "A room" :creature '(rat)))
            (rat (make-Creature :symbol 'rat :description "A rat"
                                :attr '((hp . 5) (attack . 1) (defense . 0)) :exp-reward 150)))
@@ -799,7 +799,7 @@
   "tg-load should restore game state from save."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
                                         tg-creatures-alist tg-myself tg-config-dir tg-over-p
-                                        inventorys-alist)
+                                        tg-inventorys-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(hero)))
            (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword)))
@@ -813,7 +813,7 @@
       (setq tg-myself hero)
       (setq tg-config-dir tmp-dir)
       (setq tg-over-p nil)
-      (setq inventorys-alist nil)
+      (setq tg-inventorys-alist nil)
       (unwind-protect
           (progn
             ;; Write minimal config files so tg-load-game can re-initialize
@@ -853,7 +853,7 @@
 (ert-deftest test-tg-attack-triggers-kill-quest ()
   "tg-attack should trigger kill quest progress when target is killed."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        tg-creatures-alist tg-myself quests-alist level-exp-table level-up-bonus-points auto-upgrade-attrs)
+                                        tg-creatures-alist tg-myself quests-alist tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(rat)))
            (rat (make-Creature :symbol 'rat :description "A rat"
@@ -861,9 +861,9 @@
            (q (make-Quest :symbol 'kill-rat :type 'kill :target 'rat :count 1 :progress 0
                           :status 'active :description "Kill rat" :description-complete "Done!")))
       (setq tg-display-fn #'ignore)
-      (setq level-exp-table '(0 100))
-      (setq level-up-bonus-points 3)
-      (setq auto-upgrade-attrs '((hp . 5)))
+      (setq tg-level-exp-table '(0 100))
+      (setq tg-level-up-bonus-points 3)
+      (setq tg-auto-upgrade-attrs '((hp . 5)))
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)

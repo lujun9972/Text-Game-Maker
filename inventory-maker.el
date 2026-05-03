@@ -2,12 +2,12 @@
 
 (require 'cl-lib)
 (require 'thingatpt)
-(defvar inventorys-alist nil
+(defvar tg-inventorys-alist nil
   "symbol与inventory对象的映射")
 
-(defun get-inventory-by-symbol (symbol &optional noexception)
+(defun tg-get-inventory-by-symbol (symbol &optional noexception)
   "根据symbol获取inventory对象"
-  (tg-get-entity inventorys-alist symbol noexception "没有定义该物品[%s]"))
+  (tg-get-entity tg-inventorys-alist symbol noexception "没有定义该物品[%s]"))
 
 (cl-defstruct Inventory
   "Inventory structure"
@@ -21,7 +21,7 @@
   (use-trigger nil :documentation "使用该INVENTORY时触发的事件")
   (wear-trigger nil :documentation "装备该INVENTORY时触发的事件"))
 
-(tg-def-config-builder inventory inventorys-alist Inventory (symbol description type effects))
+(tg-def-config-builder inventory tg-inventorys-alist Inventory (symbol description type effects))
 
 (cl-defmethod describe ((inventory Inventory))
   "输出inventory的描述"
@@ -31,20 +31,20 @@
 
 ;; 创建inventory列表的方法
 
-(defun inventory-has-type-p (inventory type)
+(defun tg-inventory-has-type-p (inventory type)
   "`inventory'是否能被装备"
   (when (symbolp inventory)
-	(setq inventory (get-inventory-by-symbol inventory)))
+	(setq inventory (tg-get-inventory-by-symbol inventory)))
   (let ((inventory-type (Inventory-type inventory)))
 	(or (eq inventory-type type)
 		(member type inventory-type))))
 
-(defun inventory-usable-p (inventory)
+(defun tg-inventory-usable-p (inventory)
   "`inventory'是否能被消耗"
-  (inventory-has-type-p inventory 'usable))
+  (tg-inventory-has-type-p inventory 'usable))
 
-(defun inventory-wearable-p (inventory)
+(defun tg-inventory-wearable-p (inventory)
   "`inventory'是否能被装备"
-  (inventory-has-type-p inventory 'wearable))
+  (tg-inventory-has-type-p inventory 'wearable))
 
 (provide 'inventory-maker)

@@ -17,7 +17,7 @@
               (expand-file-name "map-config.el" sample-dir))
     (tg-inventory-init (expand-file-name "inventory-config.el" sample-dir))
     (tg-tg-creatures-init (expand-file-name "creature-config.el" sample-dir))
-    (level-init (expand-file-name "level-config.el" sample-dir))
+    (tg-level-init (expand-file-name "level-config.el" sample-dir))
     (tg-quest-init (expand-file-name "quest-config.el" sample-dir))
     (dialog-init (expand-file-name "dialog-config.el" sample-dir))
     (shop-init (expand-file-name "shop-config.el" sample-dir))

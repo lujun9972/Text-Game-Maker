@@ -96,7 +96,7 @@
       (tg-inventory-init (expand-file-name "inventory-config.el" tg-config-dir))
       (tg-creatures-init (expand-file-name "creature-config.el" tg-config-dir))
       (when (file-exists-p (expand-file-name "level-config.el" tg-config-dir))
-        (level-init (expand-file-name "level-config.el" tg-config-dir))))
+        (tg-level-init (expand-file-name "level-config.el" tg-config-dir))))
     (tg-restore-game-state data)
     (setq tg-over-p nil)
     (tg-display (format "游戏已从 %s 恢复" filepath))

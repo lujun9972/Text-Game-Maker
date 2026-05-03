@@ -124,13 +124,13 @@
 
 (ert-deftest test-quest-reward-exp ()
   "quest-apply-rewards should grant exp."
-  (test-with-globals-saved (quests-alist tg-display-fn level-exp-table level-up-bonus-points auto-upgrade-attrs)
+  (test-with-globals-saved (quests-alist tg-display-fn tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (let ((q (make-Quest :symbol 'test-q :rewards '((exp . 50)) :status 'active))
           (cr (make-Creature :symbol 'hero :attr '((hp . 100) (exp . 0) (level . 1) (bonus-points . 0)))))
       (setq tg-display-fn #'ignore)
-      (setq level-exp-table '(0 100))
-      (setq level-up-bonus-points 3)
-      (setq auto-upgrade-attrs '((hp . 5)))
+      (setq tg-level-exp-table '(0 100))
+      (setq tg-level-up-bonus-points 3)
+      (setq tg-auto-upgrade-attrs '((hp . 5)))
       (let ((old-tg-myself tg-myself))
         (setq tg-myself cr)
         (quest-apply-rewards q)
@@ -139,11 +139,11 @@
 
 (ert-deftest test-quest-reward-item ()
   "quest-apply-rewards should add item to player inventory."
-  (test-with-globals-saved (quests-alist tg-display-fn tg-creatures-alist inventorys-alist)
+  (test-with-globals-saved (quests-alist tg-display-fn tg-creatures-alist tg-inventorys-alist)
     (let ((q (make-Quest :symbol 'test-q :rewards '((item . potion)) :status 'active))
           (cr (make-Creature :symbol 'hero :attr '((hp . 100)))))
       (setq tg-display-fn #'ignore)
-      (setq inventorys-alist (list (cons 'potion (make-Inventory :symbol 'potion :description "Potion" :type '(usable)))))
+      (setq tg-inventorys-alist (list (cons 'potion (make-Inventory :symbol 'potion :description "Potion" :type '(usable)))))
       (let ((old-tg-myself tg-myself))
         (setq tg-myself cr)
         (quest-apply-rewards q)
