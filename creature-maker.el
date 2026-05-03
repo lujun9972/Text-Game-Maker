@@ -2,12 +2,12 @@
 
 (require 'cl-lib)
 (require 'thingatpt)
-(defvar creatures-alist nil
+(defvar tg-creatures-alist nil
   "symbol与creature对象的映射")
 
-(defun get-creature-by-symbol (symbol)
+(defun tg-get-creature-by-symbol (symbol)
   "根据symbol获取creature对象"
-  (tg-get-entity creatures-alist symbol t))
+  (tg-get-entity tg-creatures-alist symbol t))
 
 (cl-defstruct Creature
   "Creature structure"
@@ -31,8 +31,8 @@
           (Creature-equipment creature)))
 
 ;; 创建creature列表的方法
-(defun build-creature (creature-entity)
-  "根据creature-entity创建creature,并将creature存入creatures-alist中"
+(defun tg-build-creature (creature-entity)
+  "根据creature-entity创建creature,并将creature存入tg-creatures-alist中"
   (let* ((len (length creature-entity))
          (shopkeeper (when (> len 8) (nth 8 creature-entity))))
     (cl-multiple-value-bind (symbol description attr inventory equipment death-trigger exp-reward behaviors) creature-entity
@@ -41,46 +41,46 @@
                                   :exp-reward exp-reward :behaviors behaviors
                                   :shopkeeper shopkeeper)))))
 
-(defun build-creatures(creature-config-file)
+(defun tg-build-creatures(creature-config-file)
   "根据`creature-config-file'中的配置信息创建各个creature"
   (let ((creature-entities (tg-read-from-whole-string (tg-file-content creature-config-file))))
-	(mapcar #'build-creature creature-entities)))
+	(mapcar #'tg-build-creature creature-entities)))
 
 ;; 定义初始化函数
-(defvar myself nil				;
+(defvar tg-myself nil				;
   "当前所处的creature对象")
 
-(defun creatures-init(creature-config-file)
+(defun tg-creatures-init(creature-config-file)
   "初始化函数,生成creature对象,组装map"
-  (setq creatures-alist (build-creatures creature-config-file))
-  (setq myself (get-creature-by-symbol (caar creatures-alist))))
+  (setq tg-creatures-alist (tg-build-creatures creature-config-file))
+  (setq tg-myself (tg-get-creature-by-symbol (caar tg-creatures-alist))))
 
 
-(defun remove-inventory-from-creature (creature inventory)
+(defun tg-remove-inventory-from-creature (creature inventory)
   ""
   (setf (Creature-inventory creature) (remove inventory (Creature-inventory creature))))
 
-(defun add-inventory-to-creature (creature inventory)
+(defun tg-add-inventory-to-creature (creature inventory)
   ""
   (push inventory (Creature-inventory creature)))
 
-(defun inventory-exist-in-creature-p (creature inventory)
+(defun tg-inventory-exist-in-creature-p (creature inventory)
   ""
   (member inventory (Creature-inventory creature)))
 
-(defun remove-equipment-from-creature (creature equipment)
+(defun tg-remove-equipment-from-creature (creature equipment)
   ""
   (setf (Creature-equipment creature) (remove equipment (Creature-equipment creature))))
 
-(defun add-equipment-to-creature (creature equipment)
+(defun tg-add-equipment-to-creature (creature equipment)
   ""
   (push equipment (Creature-equipment creature)))
 
-(defun equipment-exist-in-creature-p (creature equipment)
+(defun tg-equipment-exist-in-creature-p (creature equipment)
   ""
   (member equipment (Creature-equipment creature)))
 
-(defun take-effect-to-creature (creature effect)
+(defun tg-take-effect-to-creature (creature effect)
   "\u5bf9CREATURE\u65bd\u52a0EFFECT (attr-type . value)\u3002hp\u4ee5\u5916\u7684\u5c5e\u6027\u4e0d\u4f4e\u4e8e0\u3002"
   (let* ((attr-type (car effect))
 		(value (cdr effect)))
@@ -92,10 +92,10 @@
 			  new-value)))
 	  (push (cl-copy-list effect) (Creature-attr creature)))))
 
-(defun take-effects-to-creature(creature effects)
+(defun tg-take-effects-to-creature(creature effects)
   ""
   (dolist (effect effects)
-	(take-effect-to-creature creature effect)))
+	(tg-take-effect-to-creature creature effect)))
 
 (provide 'creature-maker)
 

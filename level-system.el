@@ -50,7 +50,7 @@
       (cl-incf (cdr (assoc 'level (Creature-attr creature))))
       ;; Apply auto-upgrade-attrs
       (dolist (effect auto-upgrade-attrs)
-        (take-effect-to-creature creature effect))
+        (tg-take-effect-to-creature creature effect))
       ;; Add bonus points
       (when (assoc 'bonus-points (Creature-attr creature))
         (cl-incf (cdr (assoc 'bonus-points (Creature-attr creature))) level-up-bonus-points))

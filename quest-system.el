@@ -33,11 +33,11 @@
           (value (cdr reward)))
       (pcase key
         ('exp (tg-display (format "任务奖励：获得 %d 点经验值！" value))
-              (add-exp-to-creature myself value))
+              (add-exp-to-creature tg-myself value))
         ('item (tg-display (format "任务奖励：获得 %s！" value))
-               (add-inventory-to-creature myself value))
+               (tg-add-inventory-to-creature tg-myself value))
         ('bonus-points (tg-display (format "任务奖励：获得 %d 技能点！" value))
-                       (take-effect-to-creature myself (cons 'bonus-points value)))
+                       (tg-take-effect-to-creature tg-myself (cons 'bonus-points value)))
         ('trigger (when (functionp value) (funcall value)))))))
 
 ;; --- Progress tracking ---

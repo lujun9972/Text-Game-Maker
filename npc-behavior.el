@@ -20,7 +20,7 @@
          (> hp (car args))))
       ('player-in-room
        (and tg-current-room
-            (member (Creature-symbol myself) (Room-creature tg-current-room))))
+            (member (Creature-symbol tg-myself) (Room-creature tg-current-room))))
       ('and
        (cl-every (lambda (c) (npc-evaluate-condition creature c)) args))
       ('or
@@ -34,11 +34,11 @@
 (defun npc-attack-player (creature)
   "CREATURE attacks the player."
   (let* ((npc-attack (or (cdr (assoc 'attack (Creature-attr creature))) 0))
-         (player-defense (or (cdr (assoc 'defense (Creature-attr myself))) 0))
+         (player-defense (or (cdr (assoc 'defense (Creature-attr tg-myself))) 0))
          (damage (max 1 (- npc-attack player-defense))))
-    (take-effect-to-creature myself (cons 'hp (- damage)))
+    (tg-take-effect-to-creature tg-myself (cons 'hp (- damage)))
     (tg-display (format "%s攻击了你，造成 %d 点伤害！" (Creature-symbol creature) damage))
-    (when (<= (cdr (assoc 'hp (Creature-attr myself))) 0)
+    (when (<= (cdr (assoc 'hp (Creature-attr tg-myself))) 0)
       (tg-display "你被击败了！游戏结束！")
       (setq tg-over-p t))))
 
@@ -70,12 +70,12 @@
 
 (defun npc-apply-buff (creature attr value)
   "CREATURE buffs itself with ATTR + VALUE."
-  (take-effect-to-creature creature (cons attr value))
+  (tg-take-effect-to-creature creature (cons attr value))
   (tg-display (format "%s怒吼一声，%s增强了！" (Creature-symbol creature) attr)))
 
 (defun npc-apply-debuff (creature attr value)
   "CREATURE debuffs player with ATTR - VALUE."
-  (take-effect-to-creature myself (cons attr (- value)))
+  (tg-take-effect-to-creature tg-myself (cons attr (- value)))
   (tg-display (format "%s对你施放了诅咒，%s降低了！" (Creature-symbol creature) attr)))
 
 (defun npc-execute-action (creature action)
@@ -94,9 +94,9 @@
   "Run behaviors for all NPCs in the current room."
   (when (and tg-current-room (Room-creature tg-current-room))
     (dolist (npc-sym (copy-sequence (Room-creature tg-current-room)))
-      (let ((npc (get-creature-by-symbol npc-sym)))
+      (let ((npc (tg-get-creature-by-symbol npc-sym)))
         (when (and npc
-                   (not (eq npc myself))
+                   (not (eq npc tg-myself))
                    (> (or (cdr (assoc 'hp (Creature-attr npc))) 0) 0)
                    (Creature-behaviors npc))
           (cl-block 'behavior-loop

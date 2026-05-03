@@ -560,7 +560,7 @@
 (ert-deftest test-tg-parse-attack-triggers-npc ()
   "attack command should trigger NPC behaviors (consumes a turn)."
   (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room tg-rooms-alist tg-room-map
-                             myself creatures-alist)
+                             tg-myself tg-creatures-alist)
     (setq tg-valid-actions '(tg-attack))
     (let ((room (make-Room :symbol 'arena :description "An arena"))
           (rat (make-Creature :symbol 'rat :description "A rat"
@@ -569,8 +569,8 @@
       (setf (Room-creature room) '(rat))
       (setq tg-rooms-alist (list (cons 'arena room)))
       (setq tg-room-map '((arena)))
-      (setq creatures-alist (list (cons 'rat rat)))
-      (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3))))
+      (setq tg-creatures-alist (list (cons 'rat rat)))
+      (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3))))
       (let ((npc-called nil))
         (cl-letf (((symbol-function 'npc-run-behaviors)
                    (lambda () (setq npc-called t))))

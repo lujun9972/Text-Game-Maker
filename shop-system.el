@@ -35,7 +35,7 @@
   "返回当前房间中的第一个商人Creature，无则返回nil."
   (when (and tg-current-room (Room-creature tg-current-room))
     (cl-dolist (sym (Room-creature tg-current-room))
-      (let ((cr (get-creature-by-symbol sym)))
+      (let ((cr (tg-get-creature-by-symbol sym)))
         (when (and cr (Creature-shopkeeper cr))
           (cl-return cr))))))
 

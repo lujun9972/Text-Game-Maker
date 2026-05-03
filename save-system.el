@@ -26,14 +26,14 @@
 (defun tg-save-game (filepath)
   "Save complete game snapshot to FILEPATH."
   (let ((save-data
-         `((player . ,(tg-serialize-creature myself))
+         `((player . ,(tg-serialize-creature tg-myself))
            (tg-current-room . ,(Room-symbol tg-current-room))
            (rooms . ,(mapcar (lambda (pair)
                                (cons (car pair) (tg-serialize-room (cdr pair))))
                              tg-rooms-alist))
            (creatures . ,(mapcar (lambda (pair)
                                    (cons (car pair) (tg-serialize-creature (cdr pair))))
-                                 creatures-alist))
+                                 tg-creatures-alist))
            (player-gold . ,player-gold)
            (shop-alist . ,(copy-tree shop-alist)))))
     (let ((dir (file-name-directory filepath)))
@@ -51,12 +51,12 @@
   ;; Restore player
   (let* ((player-data (cdr (assoc 'player data)))
          (player-symbol (cdr (assoc 'symbol player-data))))
-    (setq myself (get-creature-by-symbol player-symbol))
-    (when myself
-      (setf (Creature-attr myself) (cdr (assoc 'attr player-data)))
-      (setf (Creature-inventory myself) (cdr (assoc 'inventory player-data)))
-      (setf (Creature-equipment myself) (cdr (assoc 'equipment player-data)))
-      (setf (Creature-behaviors myself) (cdr (assoc 'behaviors player-data)))))
+    (setq tg-myself (tg-get-creature-by-symbol player-symbol))
+    (when tg-myself
+      (setf (Creature-attr tg-myself) (cdr (assoc 'attr player-data)))
+      (setf (Creature-inventory tg-myself) (cdr (assoc 'inventory player-data)))
+      (setf (Creature-equipment tg-myself) (cdr (assoc 'equipment player-data)))
+      (setf (Creature-behaviors tg-myself) (cdr (assoc 'behaviors player-data)))))
   ;; Restore current room
   (setq tg-current-room (tg-get-room-by-symbol (cdr (assoc 'tg-current-room data))))
   ;; Restore rooms runtime state
@@ -70,7 +70,7 @@
   ;; Restore creatures runtime state
   (let ((creatures-data (cdr (assoc 'creatures data))))
     (dolist (cr-entry creatures-data)
-      (let ((cr (get-creature-by-symbol (car cr-entry)))
+      (let ((cr (tg-get-creature-by-symbol (car cr-entry)))
             (cr-state (cdr cr-entry)))
         (when cr
           (setf (Creature-attr cr) (cdr (assoc 'attr cr-state)))
@@ -94,7 +94,7 @@
       (tg-map-init (expand-file-name "room-config.el" tg-config-dir)
                 (expand-file-name "map-config.el" tg-config-dir))
       (tg-inventory-init (expand-file-name "inventory-config.el" tg-config-dir))
-      (creatures-init (expand-file-name "creature-config.el" tg-config-dir))
+      (tg-creatures-init (expand-file-name "creature-config.el" tg-config-dir))
       (when (file-exists-p (expand-file-name "level-config.el" tg-config-dir))
         (level-init (expand-file-name "level-config.el" tg-config-dir))))
     (tg-restore-game-state data)

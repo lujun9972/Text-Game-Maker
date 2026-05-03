@@ -63,7 +63,7 @@
     (let ((q (cdr (assoc (cadr cond-expr) quests-alist))))
       (and q (eq (Quest-status q) 'completed))))
    ((eq (car cond-expr) 'has-item)
-    (and myself (member (cadr cond-expr) (Creature-inventory myself))))
+    (and tg-myself (member (cadr cond-expr) (Creature-inventory tg-myself))))
    ((eq (car cond-expr) 'and)
     (cl-every #'dialog-evaluate-condition (cdr cond-expr)))
    ((eq (car cond-expr) 'or)
@@ -84,9 +84,9 @@
     (let ((key (car effect))
           (value (cdr effect)))
       (pcase key
-        ('exp (add-exp-to-creature myself value))
-        ('item (add-inventory-to-creature myself value))
-        ('bonus-points (take-effect-to-creature myself (cons 'bonus-points value)))
+        ('exp (add-exp-to-creature tg-myself value))
+        ('item (tg-add-inventory-to-creature tg-myself value))
+        ('bonus-points (tg-take-effect-to-creature tg-myself (cons 'bonus-points value)))
         ('trigger (when (functionp value) (funcall value)))))))
 
 ;; --- Dialog interaction ---

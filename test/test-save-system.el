@@ -50,7 +50,7 @@
 
 (ert-deftest test-save-game-creates-file ()
   "tg-save-game should create a save file."
-  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room creatures-alist myself tg-display-fn)
+  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-creatures-alist tg-myself tg-display-fn)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(potion) :creature '(hero goblin)))
            (goblin (make-Creature :symbol 'goblin :attr '((hp . 25))))
            (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword)))
@@ -60,15 +60,15 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero hero)))
-      (setq myself hero)
+      (setq tg-creatures-alist (list (cons 'goblin goblin) (cons 'hero hero)))
+      (setq tg-myself hero)
       (tg-save-game save-file)
       (should (file-exists-p save-file))
       (delete-file save-file))))
 
 (ert-deftest test-save-game-tg-file-content ()
   "tg-save-game should write correct alist data."
-  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room creatures-alist myself tg-display-fn)
+  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-creatures-alist tg-myself tg-display-fn)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(torch) :creature '(hero)))
            (hero (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword) :equipment '(shield)))
            (save-file (make-temp-file "tg-save-test-" nil ".sav"))
@@ -77,8 +77,8 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq creatures-alist (list (cons 'hero hero)))
-      (setq myself hero)
+      (setq tg-creatures-alist (list (cons 'hero hero)))
+      (setq tg-myself hero)
       (unwind-protect
           (progn
             (tg-save-game save-file)
@@ -97,7 +97,7 @@
 
 (ert-deftest test-save-load-round-trip ()
   "Saving and loading should preserve game state."
-  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room creatures-alist myself tg-display-fn
+  (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-creatures-alist tg-myself tg-display-fn
                                         tg-config-dir tg-over-p)
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :inventory '(torch) :creature '(hero goblin)))
            (goblin (make-Creature :symbol 'goblin :attr '((hp . 25) (attack . 6)) :inventory '() :equipment '()))
@@ -108,22 +108,22 @@
       (setq tg-rooms-alist (list (cons 'room1 room)))
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
-      (setq creatures-alist (list (cons 'goblin goblin) (cons 'hero hero)))
-      (setq myself hero)
+      (setq tg-creatures-alist (list (cons 'goblin goblin) (cons 'hero hero)))
+      (setq tg-myself hero)
       (setq tg-over-p nil)
       (setq tg-config-dir nil)
       (unwind-protect
           (progn
             (tg-save-game save-file)
             ;; Modify state to prove load restores it
-            (setf (Creature-attr myself) '((hp . 1)))
-            (setf (Creature-inventory myself) nil)
+            (setf (Creature-attr tg-myself) '((hp . 1)))
+            (setf (Creature-inventory tg-myself) nil)
             ;; Load (tg-config-dir is nil, so no re-init)
             (tg-load-game save-file)
             ;; Verify restored state
-            (should (= (cdr (assoc 'hp (Creature-attr myself))) 85))
-            (should (equal (Creature-inventory myself) '(sword)))
-            (should (equal (Creature-equipment myself) '(shield)))
+            (should (= (cdr (assoc 'hp (Creature-attr tg-myself))) 85))
+            (should (equal (Creature-inventory tg-myself) '(sword)))
+            (should (equal (Creature-equipment tg-myself) '(shield)))
             (should (equal (Room-symbol tg-current-room) 'room1)))
         (when (file-exists-p save-file)
           (delete-file save-file))))))
@@ -141,14 +141,14 @@
 
 (ert-deftest test-tg-save-restore-player-gold ()
   "Save/restore should persist player-gold."
-  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map creatures-alist
-                        shop-alist myself tg-over-p tg-config-dir)
+  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
+                        shop-alist tg-myself tg-over-p tg-config-dir)
     (setq player-gold 42)
     (setq tg-over-p nil)
     (setq tg-config-dir nil)
-    (setq creatures-alist nil)
-    (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
-    (push (cons 'hero myself) creatures-alist)
+    (setq tg-creatures-alist nil)
+    (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100))))
+    (push (cons 'hero tg-myself) tg-creatures-alist)
     (setq tg-rooms-alist nil)
     (setq tg-current-room (make-Room :symbol 'start :description "Start"))
     (push (cons 'start tg-current-room) tg-rooms-alist)
@@ -162,14 +162,14 @@
 
 (ert-deftest test-tg-save-restore-shop-alist ()
   "Save/restore should persist shop-alist."
-  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map creatures-alist
-                        shop-alist myself tg-over-p tg-config-dir)
+  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
+                        shop-alist tg-myself tg-over-p tg-config-dir)
     (setq player-gold 0)
     (setq tg-over-p nil)
     (setq tg-config-dir nil)
-    (setq creatures-alist nil)
-    (setq myself (make-Creature :symbol 'hero :attr '((hp . 100))))
-    (push (cons 'hero myself) creatures-alist)
+    (setq tg-creatures-alist nil)
+    (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100))))
+    (push (cons 'hero tg-myself) tg-creatures-alist)
     (setq tg-rooms-alist nil)
     (setq tg-current-room (make-Room :symbol 'start :description "Start"))
     (push (cons 'start tg-current-room) tg-rooms-alist)
