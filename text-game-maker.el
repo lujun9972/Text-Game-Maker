@@ -18,7 +18,7 @@
 (defmacro tg-def-config-builder (name alist-var struct-name fields)
   "生成 build-NAME 和 NAME-init 函数。
 NAME: 模块名 (如 room, inventory, quest)
-ALIST-VAR: 存储结果的 alist 变量 (如 rooms-alist)
+ALIST-VAR: 存储结果的 alist 变量 (如 tg-rooms-alist)
 STRUCT-NAME: cl-defstruct 名 (如 Room, Inventory, Quest)
 FIELDS: 解构和构造用的字段名列表"
   (let ((build-fn (intern (format "tg-build-%s" name)))
@@ -33,7 +33,7 @@ FIELDS: 解构和构造用的字段名列表"
                  (,constructor ,@(cl-mapcan (lambda (f) (list (intern (format ":%s" f)) f)) fields)))))
        (defun ,init-fn (config-file)
          ,(format "从CONFIG-FILE加载%s配置." name)
-         (let ((entities (read-from-whole-string (tg-file-content config-file))))
+         (let ((entities (tg-read-from-whole-string (tg-file-content config-file))))
            (setq ,alist-var (mapcar #',build-fn entities)))))))
 
 (require 'tg-mode)

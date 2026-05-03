@@ -37,24 +37,24 @@
   (setq directory (cdr (assoc directory '((up . 0) (right . 1) (down . 2) (left . 3)))))
   (unless directory
     (throw 'exception "未知的方向"))
-  (let ((new-room-symbol (nth directory (beyond-rooms (Room-symbol current-room) room-map))))
+  (let ((new-room-symbol (nth directory (tg-beyond-rooms (Room-symbol tg-current-room) tg-room-map))))
     (unless new-room-symbol
       (throw 'exception "那里没有路"))
-    (tg-run-trigger Room-out-trigger current-room)
-    (setq current-room (get-room-by-symbol new-room-symbol))
-    (tg-run-trigger Room-in-trigger current-room)
-    (tg-display (describe current-room))
+    (tg-run-trigger Room-out-trigger tg-current-room)
+    (setq tg-current-room (tg-get-room-by-symbol new-room-symbol))
+    (tg-run-trigger Room-in-trigger tg-current-room)
+    (tg-display (describe tg-current-room))
     (tg-track-quest 'explore new-room-symbol)))
 
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境
 使用'watch 物品'查看指定物品"
   (unless (or (null symbol)
-              (inventory-exist-in-room-p current-room symbol)
-              (creature-exist-in-room-p current-room symbol))
+              (tg-inventory-exist-in-room-p tg-current-room symbol)
+              (tg-creature-exist-in-room-p tg-current-room symbol))
     (throw 'exception (format "房间中没有%s" symbol )))
-  (let ((object (or (unless symbol current-room)
-                    (get-room-by-symbol symbol)
+  (let ((object (or (unless symbol tg-current-room)
+                    (tg-get-room-by-symbol symbol)
                     (get-inventory-by-symbol symbol t)
                     (get-creature-by-symbol symbol))))
     (when-let* ((trig (cond ((Inventory-p object) (Inventory-watch-trigger object))
@@ -66,12 +66,12 @@
 
 (tg-defaction tg-take (inventory)
   "使用'take 物品'获取ROOM中的物品"
-  (unless (inventory-exist-in-room-p current-room inventory)
+  (unless (tg-inventory-exist-in-room-p tg-current-room inventory)
     (throw 'exception (format "房间中没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
     (tg-run-trigger Inventory-take-trigger object)
     (add-inventory-to-creature myself inventory)
-    (remove-inventory-from-room current-room inventory)
+    (tg-remove-inventory-from-room tg-current-room inventory)
     (tg-track-quest 'collect inventory)))
 
 (tg-defaction tg-drop (inventory)
@@ -81,7 +81,7 @@
   (let ((object (get-inventory-by-symbol inventory)))
     (tg-run-trigger Inventory-drop-trigger object)
     (remove-inventory-from-creature myself inventory)
-    (add-inventory-to-room current-room inventory)))
+    (tg-add-inventory-to-room tg-current-room inventory)))
 
 (tg-defaction tg-use (inventory)
   "使用'use 物品'消耗自己随身携带的inventory"
@@ -109,7 +109,7 @@
 
 (tg-defaction tg-attack (target)
   "使用'attack <target>'攻击当前房间中的生物"
-  (unless (creature-exist-in-room-p current-room target)
+  (unless (tg-creature-exist-in-room-p tg-current-room target)
     (throw 'exception (format "房间中没有%s" target)))
   (let* ((target-creature (get-creature-by-symbol target))
          (my-attack (or (cdr (assoc 'attack (Creature-attr myself))) 0))
@@ -121,7 +121,7 @@
     (tg-display (format "你攻击了%s，造成 %d 点伤害！" target damage))
     (if (<= (cdr (assoc 'hp (Creature-attr target-creature))) 0)
         (progn
-          (remove-creature-from-room current-room target)
+          (tg-remove-creature-from-room tg-current-room target)
           (tg-run-trigger Creature-death-trigger target-creature)
           (tg-display (format "%s被击败了！" target))
           (tg-track-quest 'kill target)
@@ -178,7 +178,7 @@
     (tg-display (documentation action))))
 (tg-defaction tg-talk (npc-name)
   "使用'talk <NPC>'与NPC对话"
-  (unless (creature-exist-in-room-p current-room npc-name)
+  (unless (tg-creature-exist-in-room-p tg-current-room npc-name)
     (throw 'exception (format "房间中没有%s" npc-name)))
   (dialog-start npc-name))
 

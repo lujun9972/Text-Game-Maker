@@ -92,24 +92,24 @@
 ;; --- tg-prompt-string ---
 
 (ert-deftest test-tg-prompt-string-with-room ()
-  "tg-prompt-string should return [symbol]> when current-room is set."
-  (test-with-globals-saved (current-room)
-    (setq current-room (make-Room :symbol 'living-room :description "A room"))
+  "tg-prompt-string should return [symbol]> when tg-current-room is set."
+  (test-with-globals-saved (tg-current-room)
+    (setq tg-current-room (make-Room :symbol 'living-room :description "A room"))
     (should (equal (tg-prompt-string) "[living-room]>"))))
 
 (ert-deftest test-tg-prompt-string-without-room ()
-  "tg-prompt-string should return > when current-room is nil."
-  (test-with-globals-saved (current-room)
-    (setq current-room nil)
+  "tg-prompt-string should return > when tg-current-room is nil."
+  (test-with-globals-saved (tg-current-room)
+    (setq tg-current-room nil)
     (should (equal (tg-prompt-string) ">"))))
 
 (ert-deftest test-tg-parse-room-prompt ()
   "tg-parse should parse commands after [room]> prompt."
-  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+  (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-valid-actions '(tg-help))
-    (setq current-room (make-Room :symbol 'living-room :description "A room"))
-    (setq rooms-alist (list (cons 'living-room current-room)))
-    (setq room-map '((living-room)))
+    (setq tg-current-room (make-Room :symbol 'living-room :description "A room"))
+    (setq tg-rooms-alist (list (cons 'living-room tg-current-room)))
+    (setq tg-room-map '((living-room)))
     (with-temp-buffer
       (tg-mode)
       (insert "[living-room]>help\n")
@@ -120,9 +120,9 @@
 
 (ert-deftest test-tg-parse-plain-prompt-still-works ()
   "tg-parse should still parse commands after plain > prompt."
-  (test-with-globals-saved (tg-valid-actions tg-over-p current-room)
+  (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room)
     (setq tg-valid-actions '(tg-help))
-    (setq current-room nil)
+    (setq tg-current-room nil)
     (with-temp-buffer
       (tg-mode)
       (insert ">help\n")
@@ -146,12 +146,12 @@
         (should (get-text-property prompt-start 'read-only))))))
 
 (ert-deftest test-tg-messages-room-prompt-is-read-only ()
-  "tg-messages prompt should be read-only when current-room is set."
-  (test-with-globals-saved (tg-over-p current-room rooms-alist room-map)
+  "tg-messages prompt should be read-only when tg-current-room is set."
+  (test-with-globals-saved (tg-over-p tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-over-p nil)
-    (setq current-room (make-Room :symbol 'dungeon :description "A dark dungeon"))
-    (setq rooms-alist (list (cons 'dungeon current-room)))
-    (setq room-map '((dungeon)))
+    (setq tg-current-room (make-Room :symbol 'dungeon :description "A dark dungeon"))
+    (setq tg-rooms-alist (list (cons 'dungeon tg-current-room)))
+    (setq tg-room-map '((dungeon)))
     (with-temp-buffer
       (tg-mode)
       (tg-messages)
@@ -253,11 +253,11 @@
 
 (ert-deftest test-tg-eldoc-room-prompt ()
   "tg-eldoc-function should work with [room]> prompt format."
-  (test-with-globals-saved (tg-valid-actions current-room rooms-alist room-map)
+  (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-valid-actions '(tg-help))
-    (setq current-room (make-Room :symbol 'living-room :description "A room"))
-    (setq rooms-alist (list (cons 'living-room current-room)))
-    (setq room-map '((living-room)))
+    (setq tg-current-room (make-Room :symbol 'living-room :description "A room"))
+    (setq tg-rooms-alist (list (cons 'living-room tg-current-room)))
+    (setq tg-room-map '((living-room)))
     (with-temp-buffer
       (tg-mode)
       (insert "[living-room]>help")
@@ -291,11 +291,11 @@
 
 (ert-deftest test-tg-messages-consecutive-calls-preserve-read-only ()
   "Multiple tg-messages calls should keep all prompts read-only."
-  (test-with-globals-saved (tg-over-p current-room rooms-alist room-map)
+  (test-with-globals-saved (tg-over-p tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-over-p nil)
-    (setq current-room (make-Room :symbol 'hall :description "A hall"))
-    (setq rooms-alist (list (cons 'hall current-room)))
-    (setq room-map '((hall)))
+    (setq tg-current-room (make-Room :symbol 'hall :description "A hall"))
+    (setq tg-rooms-alist (list (cons 'hall tg-current-room)))
+    (setq tg-room-map '((hall)))
     (with-temp-buffer
       (tg-mode)
       (tg-messages)
@@ -522,11 +522,11 @@
 
 (ert-deftest test-tg-parse-action-result-not-t ()
   "tg-parse should display the action's return value, not symbol t."
-  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+  (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-valid-actions '(tg-watch))
-    (setq current-room (make-Room :symbol 'test-room :description "A test room"))
-    (setq rooms-alist (list (cons 'test-room current-room)))
-    (setq room-map '((test-room)))
+    (setq tg-current-room (make-Room :symbol 'test-room :description "A test room"))
+    (setq tg-rooms-alist (list (cons 'test-room tg-current-room)))
+    (setq tg-room-map '((test-room)))
     (with-temp-buffer
       (tg-mode)
       (insert ">watch\n")
@@ -541,11 +541,11 @@
 
 (ert-deftest test-tg-parse-watch-does-not-trigger-npc ()
   "watch command should not trigger NPC behaviors (not consume a turn)."
-  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map)
+  (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room tg-rooms-alist tg-room-map)
     (setq tg-valid-actions '(tg-watch))
-    (setq current-room (make-Room :symbol 'test-room :description "A test room"))
-    (setq rooms-alist (list (cons 'test-room current-room)))
-    (setq room-map '((test-room)))
+    (setq tg-current-room (make-Room :symbol 'test-room :description "A test room"))
+    (setq tg-rooms-alist (list (cons 'test-room tg-current-room)))
+    (setq tg-room-map '((test-room)))
     (let ((npc-called nil))
       (cl-letf (((symbol-function 'npc-run-behaviors)
                  (lambda () (setq npc-called t))))
@@ -559,16 +559,16 @@
 
 (ert-deftest test-tg-parse-attack-triggers-npc ()
   "attack command should trigger NPC behaviors (consumes a turn)."
-  (test-with-globals-saved (tg-valid-actions tg-over-p current-room rooms-alist room-map
+  (test-with-globals-saved (tg-valid-actions tg-over-p tg-current-room tg-rooms-alist tg-room-map
                              myself creatures-alist)
     (setq tg-valid-actions '(tg-attack))
     (let ((room (make-Room :symbol 'arena :description "An arena"))
           (rat (make-Creature :symbol 'rat :description "A rat"
                               :attr '((hp . 10) (attack . 2) (defense . 0)))))
-      (setq current-room room)
+      (setq tg-current-room room)
       (setf (Room-creature room) '(rat))
-      (setq rooms-alist (list (cons 'arena room)))
-      (setq room-map '((arena)))
+      (setq tg-rooms-alist (list (cons 'arena room)))
+      (setq tg-room-map '((arena)))
       (setq creatures-alist (list (cons 'rat rat)))
       (setq myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3))))
       (let ((npc-called nil))

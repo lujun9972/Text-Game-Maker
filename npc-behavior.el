@@ -19,8 +19,8 @@
        (let ((hp (or (cdr (assoc 'hp (Creature-attr creature))) 0)))
          (> hp (car args))))
       ('player-in-room
-       (and current-room
-            (member (Creature-symbol myself) (Room-creature current-room))))
+       (and tg-current-room
+            (member (Creature-symbol myself) (Room-creature tg-current-room))))
       ('and
        (cl-every (lambda (c) (npc-evaluate-condition creature c)) args))
       ('or
@@ -49,7 +49,7 @@
 (defun npc-move (creature direction)
   "Move CREATURE in DIRECTION (symbol or 'random)."
   (let* ((sym (Creature-symbol creature))
-         (neighbors (beyond-rooms (Room-symbol current-room) room-map))
+         (neighbors (tg-beyond-rooms (Room-symbol tg-current-room) tg-room-map))
          (dir-map '((up . 0) (right . 1) (down . 2) (left . 3)))
          (dir-names '((up . "北") (right . "东") (down . "南") (left . "西")))
          target-symbol)
@@ -63,9 +63,9 @@
     (when-let* ((dir-idx (cdr (assoc direction dir-map))))
       (setq target-symbol (nth dir-idx neighbors))
       (when target-symbol
-        (remove-creature-from-room current-room sym)
-        (let ((target-room (get-room-by-symbol target-symbol)))
-          (add-creature-to-room target-room sym))
+        (tg-remove-creature-from-room tg-current-room sym)
+        (let ((target-room (tg-get-room-by-symbol target-symbol)))
+          (tg-add-creature-to-room target-room sym))
         (tg-display (format "%s向%s离开了。" sym (cdr (assoc direction dir-names))))))))
 
 (defun npc-apply-buff (creature attr value)
@@ -92,8 +92,8 @@
 
 (defun npc-run-behaviors ()
   "Run behaviors for all NPCs in the current room."
-  (when (and current-room (Room-creature current-room))
-    (dolist (npc-sym (copy-sequence (Room-creature current-room)))
+  (when (and tg-current-room (Room-creature tg-current-room))
+    (dolist (npc-sym (copy-sequence (Room-creature tg-current-room)))
       (let ((npc (get-creature-by-symbol npc-sym)))
         (when (and npc
                    (not (eq npc myself))

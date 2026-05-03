@@ -26,15 +26,15 @@
 
 (defun shop-init (config-file)
   "从CONFIG-FILE加载商品配置."
-  (let ((shop-entities (read-from-whole-string (tg-file-content config-file))))
+  (let ((shop-entities (tg-read-from-whole-string (tg-file-content config-file))))
     (setq shop-alist (mapcar #'build-shop-entry shop-entities))))
 
 ;; --- Helpers ---
 
 (defun shop-get-shopkeeper ()
   "返回当前房间中的第一个商人Creature，无则返回nil."
-  (when (and current-room (Room-creature current-room))
-    (cl-dolist (sym (Room-creature current-room))
+  (when (and tg-current-room (Room-creature tg-current-room))
+    (cl-dolist (sym (Room-creature tg-current-room))
       (let ((cr (get-creature-by-symbol sym)))
         (when (and cr (Creature-shopkeeper cr))
           (cl-return cr))))))

@@ -27,10 +27,10 @@
   "Save complete game snapshot to FILEPATH."
   (let ((save-data
          `((player . ,(tg-serialize-creature myself))
-           (current-room . ,(Room-symbol current-room))
+           (tg-current-room . ,(Room-symbol tg-current-room))
            (rooms . ,(mapcar (lambda (pair)
                                (cons (car pair) (tg-serialize-room (cdr pair))))
-                             rooms-alist))
+                             tg-rooms-alist))
            (creatures . ,(mapcar (lambda (pair)
                                    (cons (car pair) (tg-serialize-creature (cdr pair))))
                                  creatures-alist))
@@ -58,11 +58,11 @@
       (setf (Creature-equipment myself) (cdr (assoc 'equipment player-data)))
       (setf (Creature-behaviors myself) (cdr (assoc 'behaviors player-data)))))
   ;; Restore current room
-  (setq current-room (get-room-by-symbol (cdr (assoc 'current-room data))))
+  (setq tg-current-room (tg-get-room-by-symbol (cdr (assoc 'tg-current-room data))))
   ;; Restore rooms runtime state
   (let ((rooms-data (cdr (assoc 'rooms data))))
     (dolist (room-entry rooms-data)
-      (let ((room (get-room-by-symbol (car room-entry)))
+      (let ((room (tg-get-room-by-symbol (car room-entry)))
             (room-state (cdr room-entry)))
         (when room
           (setf (Room-inventory room) (cdr (assoc 'inventory room-state)))
@@ -91,7 +91,7 @@
                 (read (current-buffer)))))
     (when tg-config-dir
       ;; Re-initialize from config files to restore triggers
-      (map-init (expand-file-name "room-config.el" tg-config-dir)
+      (tg-map-init (expand-file-name "room-config.el" tg-config-dir)
                 (expand-file-name "map-config.el" tg-config-dir))
       (tg-inventory-init (expand-file-name "inventory-config.el" tg-config-dir))
       (creatures-init (expand-file-name "creature-config.el" tg-config-dir))
@@ -100,6 +100,6 @@
     (tg-restore-game-state data)
     (setq tg-over-p nil)
     (tg-display (format "游戏已从 %s 恢复" filepath))
-    (tg-display (describe current-room))))
+    (tg-display (describe tg-current-room))))
 
 (provide 'save-system)

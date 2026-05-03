@@ -38,11 +38,11 @@
 
 (ert-deftest test-get-shopkeeper-in-room ()
   "shop-get-shopkeeper should return first shopkeeper creature in room."
-  (test-with-globals-saved (current-room rooms-alist room-map creatures-alist)
+  (test-with-globals-saved (tg-current-room tg-rooms-alist tg-room-map creatures-alist)
     (setq creatures-alist nil)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) creatures-alist)
     (push (cons 'goblin (make-Creature :symbol 'goblin :shopkeeper nil)) creatures-alist)
-    (setq current-room (make-Room :symbol 'market :description "Market"
+    (setq tg-current-room (make-Room :symbol 'market :description "Market"
                                    :creature '(merchant goblin)))
     (let ((sk (shop-get-shopkeeper)))
       (should sk)
@@ -50,17 +50,17 @@
 
 (ert-deftest test-get-shopkeeper-no-shopkeeper ()
   "shop-get-shopkeeper should return nil when no shopkeeper in room."
-  (test-with-globals-saved (current-room rooms-alist room-map creatures-alist)
+  (test-with-globals-saved (tg-current-room tg-rooms-alist tg-room-map creatures-alist)
     (setq creatures-alist nil)
     (push (cons 'goblin (make-Creature :symbol 'goblin)) creatures-alist)
-    (setq current-room (make-Room :symbol 'cave :description "Cave"
+    (setq tg-current-room (make-Room :symbol 'cave :description "Cave"
                                    :creature '(goblin)))
     (should-not (shop-get-shopkeeper))))
 
 (ert-deftest test-get-shopkeeper-empty-room ()
   "shop-get-shopkeeper should return nil for empty room."
-  (test-with-globals-saved (current-room rooms-alist room-map)
-    (setq current-room (make-Room :symbol 'empty :description "Empty room"
+  (test-with-globals-saved (tg-current-room tg-rooms-alist tg-room-map)
+    (setq tg-current-room (make-Room :symbol 'empty :description "Empty room"
                                    :creature nil))
     (should-not (shop-get-shopkeeper))))
 

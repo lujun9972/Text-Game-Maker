@@ -26,8 +26,8 @@
 
 (defun tg-prompt-string ()
   "Return the prompt string showing current room symbol."
-  (if (and current-room (Room-p current-room))
-      (format "[%s]>" (Room-symbol current-room))
+  (if (and tg-current-room (Room-p tg-current-room))
+      (format "[%s]>" (Room-symbol tg-current-room))
     ">"))
 
 (defun tg-messages ()
