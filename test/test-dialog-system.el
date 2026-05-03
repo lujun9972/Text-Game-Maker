@@ -11,7 +11,7 @@
   "dialog-init should load dialogs from config file."
   (test-with-temp-file "(prisoner \"请救救我\" ((\"你是谁？\" \"探险者\" nil nil)))"
     (test-with-globals-saved (tg-dialogs-alist)
-      (dialog-init temp-file)
+      (tg-dialog-init temp-file)
       (should (= (length tg-dialogs-alist) 1))
       (should (eq (Dialog-npc (cdr (assoc 'prisoner tg-dialogs-alist))) 'prisoner))
       (should (equal (Dialog-greeting (cdr (assoc 'prisoner tg-dialogs-alist))) "请救救我"))
@@ -68,9 +68,9 @@
       (should (tg-dialog-evaluate-condition '(or (quest-active test-q) (has-item shield))))
       (should-not (tg-dialog-evaluate-condition '(or (quest-active other-q) (has-item shield)))))))
 
-;; --- dialog-get-visible-options ---
+;; --- tg-dialog-get-visible-options ---
 
-(ert-deftest test-dialog-get-visible-options ()
+(ert-deftest test-tg-dialog-get-visible-options ()
   "Should filter options by condition."
   (test-with-globals-saved (tg-quests-alist)
     (let ((q (make-Quest :symbol 'find-key :status 'active)))
@@ -79,7 +79,7 @@
              (opt2 (make-DialogOption :text "B" :response "R2" :condition '(quest-active find-key)))
              (opt3 (make-DialogOption :text "C" :response "R3" :condition '(quest-completed find-key)))
              (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt1 opt2 opt3))))
-        (let ((visible (dialog-get-visible-options dialog)))
+        (let ((visible (tg-dialog-get-visible-options dialog)))
           (should (= (length visible) 2))
           (should (equal (DialogOption-text (nth 0 visible)) "A"))
           (should (equal (DialogOption-text (nth 1 visible)) "B")))))))
@@ -170,34 +170,34 @@
       (should (null tg-dialog-pending))
       (should (cl-some (lambda (s) (string-match-p "没有可用的对话选项" s)) (mapcar #'car output))))))
 
-;; --- dialog-handle-choice ---
+;; --- tg-dialog-handle-choice ---
 
-(ert-deftest test-dialog-handle-choice-valid ()
-  "dialog-handle-choice should process valid choice and clear tg-dialog-pending."
+(ert-deftest test-tg-dialog-handle-choice-valid ()
+  "tg-dialog-handle-choice should process valid choice and clear tg-dialog-pending."
   (test-with-globals-saved (tg-dialog-pending tg-display-fn)
     (let* ((opt (make-DialogOption :text "A" :response "Response A" :condition nil))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (output nil))
       (setq tg-dialog-pending dialog)
       (setq tg-display-fn (lambda (&rest args) (push args output)))
-      (dialog-handle-choice "1")
+      (tg-dialog-handle-choice "1")
       (should (null tg-dialog-pending))
       (should (cl-some (lambda (s) (string-match-p "Response A" s)) (mapcar #'car output))))))
 
-(ert-deftest test-dialog-handle-choice-invalid ()
-  "dialog-handle-choice should keep tg-dialog-pending on invalid input."
+(ert-deftest test-tg-dialog-handle-choice-invalid ()
+  "tg-dialog-handle-choice should keep tg-dialog-pending on invalid input."
   (test-with-globals-saved (tg-dialog-pending tg-display-fn)
     (let* ((opt (make-DialogOption :text "A" :response "R" :condition nil))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
            (output nil))
       (setq tg-dialog-pending dialog)
       (setq tg-display-fn (lambda (&rest args) (push args output)))
-      (dialog-handle-choice "5")
+      (tg-dialog-handle-choice "5")
       (should (eq tg-dialog-pending dialog))
       (should (cl-some (lambda (s) (string-match-p "请输入有效的选项编号" s)) (mapcar #'car output))))))
 
-(ert-deftest test-dialog-handle-choice-applies-effects ()
-  "dialog-handle-choice should apply effects on valid choice."
+(ert-deftest test-tg-dialog-handle-choice-applies-effects ()
+  "tg-dialog-handle-choice should apply effects on valid choice."
   (test-with-globals-saved (tg-dialog-pending tg-display-fn tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (let* ((opt (make-DialogOption :text "A" :response "R" :condition nil :effects '((exp . 30))))
            (dialog (make-Dialog :npc 'guard :greeting "Hi" :options (list opt)))
@@ -209,7 +209,7 @@
       (setq tg-auto-upgrade-attrs '((hp . 5)))
       (let ((old-tg-myself tg-myself))
         (setq tg-myself cr)
-        (dialog-handle-choice "1")
+        (tg-dialog-handle-choice "1")
         (should (= (cdr (assoc 'exp (Creature-attr cr))) 30))
         (should (null tg-dialog-pending))
         (setq tg-myself old-tg-myself)))))

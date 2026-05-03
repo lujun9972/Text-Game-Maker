@@ -767,7 +767,7 @@
       (setq tg-creatures-alist (list (cons 'goblin goblin) (cons 'hero tg-myself)))
       (setq tg-over-p nil)
       (tg-move "right")
-      (npc-run-behaviors)
+      (tg-npc-run-behaviors)
       ;; NPC should have spoken
       (should (cl-some (lambda (s) (string-match-p "Welcome" s)) (mapcar #'car output))))))
 
@@ -853,7 +853,7 @@
 (ert-deftest test-tg-attack-triggers-kill-quest ()
   "tg-attack should trigger kill quest progress when target is killed."
   (test-with-globals-saved (tg-rooms-alist tg-room-map tg-current-room tg-valid-actions tg-display-fn
-                                        tg-creatures-alist tg-myself quests-alist tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
+                                        tg-creatures-alist tg-myself tg-quests-alist tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "Room 1" :creature '(rat)))
            (rat (make-Creature :symbol 'rat :description "A rat"
@@ -869,7 +869,7 @@
       (setq tg-current-room room)
       (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 10) (defense . 5) (exp . 0) (level . 1) (bonus-points . 0))))
       (setq tg-creatures-alist (list (cons 'rat rat) (cons 'hero tg-myself)))
-      (setq quests-alist (list (cons 'kill-rat q)))
+      (setq tg-quests-alist (list (cons 'kill-rat q)))
       (tg-attack 'rat)
       (should (eq (Quest-status q) 'completed)))))
 
@@ -877,13 +877,13 @@
 
 (ert-deftest test-tg-quests-displays-active ()
   "tg-quests should display active quests."
-  (test-with-globals-saved (tg-valid-actions tg-display-fn quests-alist)
+  (test-with-globals-saved (tg-valid-actions tg-display-fn tg-quests-alist)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let ((q (make-Quest :symbol 'test-q :description "Test quest" :type 'kill :target 'rat
                           :count 3 :progress 1 :status 'active))
           (output nil))
       (setq tg-display-fn (lambda (&rest args) (push args output)))
-      (setq quests-alist (list (cons 'test-q q)))
+      (setq tg-quests-alist (list (cons 'test-q q)))
       (tg-quests)
       (should (cl-some (lambda (s) (string-match-p "Test quest" s)) (mapcar #'car output))))))
 
@@ -892,7 +892,7 @@
 (ert-deftest test-tg-talk-starts-dialog ()
   "tg-talk should start dialog with NPC in room."
   (test-with-globals-saved (tg-valid-actions tg-display-fn tg-rooms-alist tg-room-map tg-current-room
-                              tg-creatures-alist dialogs-alist dialog-pending)
+                              tg-creatures-alist tg-dialogs-alist tg-dialog-pending)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "Room" :creature '(guard)))
            (guard-cr (make-Creature :symbol 'guard :description "Guard" :attr '((hp . 50))))
@@ -904,15 +904,15 @@
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
       (setq tg-creatures-alist (list (cons 'guard guard-cr)))
-      (setq dialogs-alist (list (cons 'guard dialog)))
+      (setq tg-dialogs-alist (list (cons 'guard dialog)))
       (tg-talk 'guard)
-      (should (eq dialog-pending dialog))
+      (should (eq tg-dialog-pending dialog))
       (should (cl-some (lambda (s) (string-match-p "What?" s)) (mapcar #'car output))))))
 
 (ert-deftest test-tg-talk-npc-not-in-room ()
   "tg-talk should throw when NPC is not in room."
   (test-with-globals-saved (tg-valid-actions tg-display-fn tg-rooms-alist tg-room-map tg-current-room
-                              tg-creatures-alist dialogs-alist dialog-pending)
+                              tg-creatures-alist tg-dialogs-alist tg-dialog-pending)
     (setq tg-valid-actions (copy-sequence tg-valid-actions))
     (let* ((room (make-Room :symbol 'room1 :description "Room" :creature nil))
            (output nil))
@@ -921,7 +921,7 @@
       (setq tg-room-map '((room1)))
       (setq tg-current-room room)
       (setq tg-creatures-alist nil)
-      (setq dialogs-alist nil)
+      (setq tg-dialogs-alist nil)
       (let ((result (catch 'exception (tg-talk 'nobody))))
         (should (string-match-p "没有" result))))))
 
@@ -929,13 +929,13 @@
 
 (ert-deftest test-tg-shop-shows-goods ()
   "tg-shop should display merchant's goods."
-  (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist shop-alist tg-display-fn player-gold)
+  (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist tg-shop-alist tg-display-fn tg-player-gold)
     (setq tg-valid-actions '(tg-shop))
-    (setq player-gold 100)
+    (setq tg-player-gold 100)
     (setq tg-creatures-alist nil)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10) (sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10) (sword . 50))))))
     (let (output)
       (setq tg-display-fn (lambda (&rest args) (push (car args) output)))
       (tg-shop)
@@ -947,12 +947,12 @@
 
 (ert-deftest test-tg-shop-no-merchant ()
   "tg-shop should show message when no merchant in room."
-  (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist shop-alist tg-display-fn)
+  (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist tg-shop-alist tg-display-fn)
     (setq tg-valid-actions '(tg-shop))
     (setq tg-creatures-alist nil)
     (push (cons 'goblin (make-Creature :symbol 'goblin)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'cave :description "Cave" :creature '(goblin)))
-    (setq shop-alist nil)
+    (setq tg-shop-alist nil)
     (let (output)
       (setq tg-display-fn (lambda (&rest args) (push (car args) output)))
       (tg-shop)
@@ -961,34 +961,34 @@
 (ert-deftest test-tg-buy-success ()
   "tg-buy should purchase item and deduct gold."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist tg-display-fn player-gold tg-myself)
+                        tg-shop-alist tg-display-fn tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-buy))
-    (setq player-gold 100)
+    (setq tg-player-gold 100)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory nil))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10))))))
     (let (output)
       (setq tg-display-fn (lambda (&rest args) (push (car args) output)))
       (tg-buy "bread")
-      (should (= player-gold 90))
+      (should (= tg-player-gold 90))
       (should (member 'bread (Creature-inventory tg-myself)))
       (should (cl-some (lambda (s) (string-match-p "购买" s)) output)))))
 
 (ert-deftest test-tg-buy-not-enough-gold ()
   "tg-buy should fail when not enough gold."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist player-gold tg-myself)
+                        tg-shop-alist tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-buy))
-    (setq player-gold 5)
+    (setq tg-player-gold 5)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory nil))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
     (let ((result (catch 'exception (tg-buy "sword"))))
       (should (stringp result))
       (should (string-match-p "金币不足" result)))))
@@ -996,15 +996,15 @@
 (ert-deftest test-tg-buy-item-not-in-shop ()
   "tg-buy should fail when item not in merchant's goods."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist player-gold tg-myself)
+                        tg-shop-alist tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-buy))
-    (setq player-gold 100)
+    (setq tg-player-gold 100)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory nil))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((bread . 10))))))
     (let ((result (catch 'exception (tg-buy "sword"))))
       (should (stringp result))
       (should (string-match-p "没有这个商品" result)))))
@@ -1012,13 +1012,13 @@
 (ert-deftest test-tg-buy-no-merchant ()
   "tg-buy should fail when no merchant in room."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist player-gold)
+                        tg-shop-alist tg-player-gold)
     (setq tg-valid-actions '(tg-buy))
-    (setq player-gold 100)
+    (setq tg-player-gold 100)
     (setq tg-creatures-alist nil)
     (push (cons 'goblin (make-Creature :symbol 'goblin)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'cave :description "Cave" :creature '(goblin)))
-    (setq shop-alist nil)
+    (setq tg-shop-alist nil)
     (let ((result (catch 'exception (tg-buy "bread"))))
       (should (stringp result))
       (should (string-match-p "没有商人" result)))))
@@ -1026,33 +1026,33 @@
 (ert-deftest test-tg-sell-with-known-price ()
   "tg-sell should calculate sell price from item's shop price × sell-rate."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist tg-display-fn player-gold tg-myself)
+                        tg-shop-alist tg-display-fn tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-sell))
-    (setq player-gold 0)
+    (setq tg-player-gold 0)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(sword)))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
     (let (output)
       (setq tg-display-fn (lambda (&rest args) (push (car args) output)))
       (tg-sell "sword")
-      (should (= player-gold 25))  ;; 50 × 0.5 = 25
+      (should (= tg-player-gold 25))  ;; 50 × 0.5 = 25
       (should-not (member 'sword (Creature-inventory tg-myself))))))
 
 (ert-deftest test-tg-sell-not-in-inventory ()
   "tg-sell should fail when item not in player inventory."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist player-gold tg-myself)
+                        tg-shop-alist tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-sell))
-    (setq player-gold 0)
+    (setq tg-player-gold 0)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory nil))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
     (let ((result (catch 'exception (tg-sell "sword"))))
       (should (stringp result))
       (should (string-match-p "身上没有" result)))))
@@ -1060,20 +1060,20 @@
 (ert-deftest test-tg-sell-unknown-item-default-price ()
   "tg-sell should use default price 5 when item not in merchant's goods."
   (test-with-globals-saved (tg-valid-actions tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist tg-display-fn player-gold tg-myself)
+                        tg-shop-alist tg-display-fn tg-player-gold tg-myself)
     (setq tg-valid-actions '(tg-sell))
-    (setq player-gold 0)
+    (setq tg-player-gold 0)
     (setq tg-creatures-alist nil)
     (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100)) :inventory '(bread)))
     (push (cons 'hero tg-myself) tg-creatures-alist)
     (push (cons 'merchant (make-Creature :symbol 'merchant :shopkeeper t)) tg-creatures-alist)
     (setq tg-current-room (make-Room :symbol 'market :description "Market" :creature '(merchant)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.3 :goods '((sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.3 :goods '((sword . 50))))))
     (let (output)
       (setq tg-display-fn (lambda (&rest args) (push (car args) output)))
       (tg-sell "bread")
       ;; bread not in merchant goods, default price = 5, sell-rate = 0.3, sell price = max(1, floor(5*0.3)) = max(1, 1) = 1
-      (should (= player-gold 1))
+      (should (= tg-player-gold 1))
       (should-not (member 'bread (Creature-inventory tg-myself))))))
 
 (provide 'test-action)

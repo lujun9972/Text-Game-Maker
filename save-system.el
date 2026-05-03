@@ -34,8 +34,8 @@
            (creatures . ,(mapcar (lambda (pair)
                                    (cons (car pair) (tg-serialize-creature (cdr pair))))
                                  tg-creatures-alist))
-           (player-gold . ,player-gold)
-           (shop-alist . ,(copy-tree shop-alist)))))
+           (tg-player-gold . ,tg-player-gold)
+           (tg-shop-alist . ,(copy-tree tg-shop-alist)))))
     (let ((dir (file-name-directory filepath)))
       (when (and dir (not (file-directory-p dir)))
         (make-directory dir t)))
@@ -78,8 +78,8 @@
           (setf (Creature-equipment cr) (cdr (assoc 'equipment cr-state)))
           (setf (Creature-behaviors cr) (cdr (assoc 'behaviors cr-state)))))))
   ;; Restore shop state
-  (setq player-gold (or (cdr (assoc 'player-gold data)) 0))
-  (setq shop-alist (or (cdr (assoc 'shop-alist data)) shop-alist)))
+  (setq tg-player-gold (or (cdr (assoc 'tg-player-gold data)) 0))
+  (setq tg-shop-alist (or (cdr (assoc 'tg-shop-alist data)) tg-shop-alist)))
 
 (defun tg-load-game (filepath)
   "Load game state from FILEPATH."

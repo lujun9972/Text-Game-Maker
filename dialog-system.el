@@ -57,10 +57,10 @@
   (cond
    ((null cond-expr) t)
    ((eq (car cond-expr) 'quest-active)
-    (let ((q (cdr (assoc (cadr cond-expr) quests-alist))))
+    (let ((q (cdr (assoc (cadr cond-expr) tg-quests-alist))))
       (and q (eq (Quest-status q) 'active))))
    ((eq (car cond-expr) 'quest-completed)
-    (let ((q (cdr (assoc (cadr cond-expr) quests-alist))))
+    (let ((q (cdr (assoc (cadr cond-expr) tg-quests-alist))))
       (and q (eq (Quest-status q) 'completed))))
    ((eq (car cond-expr) 'has-item)
     (and tg-myself (member (cadr cond-expr) (Creature-inventory tg-myself))))

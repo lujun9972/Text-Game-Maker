@@ -257,13 +257,13 @@
     (unless sk
       (throw 'exception "这里没有商人"))
     (let* ((npc-sym (Creature-symbol sk))
-           (price (shop-get-item-price npc-sym item)))
+           (price (tg-shop-get-item-price npc-sym item)))
       (unless price
         (throw 'exception "商人没有这个商品"))
       (unless (>= tg-player-gold price)
         (throw 'exception "金币不足"))
       (cl-decf tg-player-gold price)
-      (shop-remove-item npc-sym item)
+      (tg-shop-remove-item npc-sym item)
       (tg-add-inventory-to-creature tg-myself item)
       (tg-display (format "购买了 %s，花费 %d 金币（剩余: %d）" item price tg-player-gold)))))
 
@@ -275,12 +275,12 @@
     (unless (tg-inventory-exist-in-creature-p tg-myself item)
       (throw 'exception (format "身上没有%s" item)))
     (let* ((npc-sym (Creature-symbol sk))
-           (sell-rate (shop-get-sell-rate npc-sym))
-           (base-price (or (shop-get-item-price npc-sym item) 5))
+           (sell-rate (tg-shop-get-sell-rate npc-sym))
+           (base-price (or (tg-shop-get-item-price npc-sym item) 5))
            (sell-price (max 1 (floor (* base-price sell-rate)))))
       (cl-incf tg-player-gold sell-price)
       (tg-remove-inventory-from-creature tg-myself item)
-      (shop-add-item npc-sym item base-price)
+      (tg-shop-add-item npc-sym item base-price)
       (tg-display (format "卖出了 %s，获得 %d 金币（持有: %d）" item sell-price tg-player-gold)))))
 
 (provide 'action)

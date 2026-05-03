@@ -547,7 +547,7 @@
     (setq tg-rooms-alist (list (cons 'test-room tg-current-room)))
     (setq tg-room-map '((test-room)))
     (let ((npc-called nil))
-      (cl-letf (((symbol-function 'npc-run-behaviors)
+      (cl-letf (((symbol-function 'tg-npc-run-behaviors)
                  (lambda () (setq npc-called t))))
         (with-temp-buffer
           (tg-mode)
@@ -572,7 +572,7 @@
       (setq tg-creatures-alist (list (cons 'rat rat)))
       (setq tg-myself (make-Creature :symbol 'hero :attr '((hp . 100) (attack . 5) (defense . 3))))
       (let ((npc-called nil))
-        (cl-letf (((symbol-function 'npc-run-behaviors)
+        (cl-letf (((symbol-function 'tg-npc-run-behaviors)
                    (lambda () (setq npc-called t))))
           (with-temp-buffer
             (tg-mode)

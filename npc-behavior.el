@@ -81,9 +81,9 @@
 (defun tg-npc-execute-action (creature action)
   "Execute ACTION for CREATURE."
   (pcase (car action)
-    ('attack (tg-tg-npc-attack-player creature))
+    ('attack (tg-npc-attack-player creature))
     ('say (tg-npc-say creature (cadr action)))
-    ('move (tg-tg-npc-move creature (cadr action)))
+    ('move (tg-npc-move creature (cadr action)))
     ('buff (tg-npc-apply-buff creature (cadr action) (caddr action)))
     ('debuff (tg-npc-apply-debuff creature (cadr action) (caddr action)))
     (_ nil)))
@@ -103,7 +103,7 @@
             (dolist (rule (Creature-behaviors npc))
               (let ((condition (car rule))
                     (action (cdr rule)))
-                (when (tg-tg-npc-evaluate-condition npc condition)
+                (when (tg-npc-evaluate-condition npc condition)
                   (tg-npc-execute-action npc action)
                   (cl-return-from 'behavior-loop))))))))))
 

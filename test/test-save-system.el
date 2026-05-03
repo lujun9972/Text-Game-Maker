@@ -180,7 +180,7 @@
       (setq tg-shop-alist nil)
       (tg-load-game temp-file)
       (should (assoc 'merchant tg-shop-alist))
-      (should (= (shop-get-sell-rate 'merchant) 0.5))
-      (should (= (shop-get-item-price 'merchant 'sword) 50)))))
+      (should (= (tg-shop-get-sell-rate 'merchant) 0.5))
+      (should (= (tg-shop-get-item-price 'merchant 'sword) 50)))))
 
 (provide 'test-save-system)
