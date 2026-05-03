@@ -139,11 +139,11 @@
 
 ;; --- Shop save/load ---
 
-(ert-deftest test-tg-save-restore-player-gold ()
-  "Save/restore should persist player-gold."
-  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist tg-myself tg-over-p tg-config-dir)
-    (setq player-gold 42)
+(ert-deftest test-tg-save-restore-tg-player-gold ()
+  "Save/restore should persist tg-player-gold."
+  (test-with-globals-saved (tg-player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
+                        tg-shop-alist tg-myself tg-over-p tg-config-dir)
+    (setq tg-player-gold 42)
     (setq tg-over-p nil)
     (setq tg-config-dir nil)
     (setq tg-creatures-alist nil)
@@ -153,18 +153,18 @@
     (setq tg-current-room (make-Room :symbol 'start :description "Start"))
     (push (cons 'start tg-current-room) tg-rooms-alist)
     (setq tg-room-map '((start)))
-    (setq shop-alist nil)
+    (setq tg-shop-alist nil)
     (test-with-temp-file ""
       (tg-save-game temp-file)
-      (setq player-gold 0)
+      (setq tg-player-gold 0)
       (tg-load-game temp-file)
-      (should (= player-gold 42)))))
+      (should (= tg-player-gold 42)))))
 
-(ert-deftest test-tg-save-restore-shop-alist ()
-  "Save/restore should persist shop-alist."
-  (test-with-globals-saved (player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
-                        shop-alist tg-myself tg-over-p tg-config-dir)
-    (setq player-gold 0)
+(ert-deftest test-tg-save-restore-tg-shop-alist ()
+  "Save/restore should persist tg-shop-alist."
+  (test-with-globals-saved (tg-player-gold tg-current-room tg-rooms-alist tg-room-map tg-creatures-alist
+                        tg-shop-alist tg-myself tg-over-p tg-config-dir)
+    (setq tg-player-gold 0)
     (setq tg-over-p nil)
     (setq tg-config-dir nil)
     (setq tg-creatures-alist nil)
@@ -174,12 +174,12 @@
     (setq tg-current-room (make-Room :symbol 'start :description "Start"))
     (push (cons 'start tg-current-room) tg-rooms-alist)
     (setq tg-room-map '((start)))
-    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
+    (setq tg-shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
     (test-with-temp-file ""
       (tg-save-game temp-file)
-      (setq shop-alist nil)
+      (setq tg-shop-alist nil)
       (tg-load-game temp-file)
-      (should (assoc 'merchant shop-alist))
+      (should (assoc 'merchant tg-shop-alist))
       (should (= (shop-get-sell-rate 'merchant) 0.5))
       (should (= (shop-get-item-price 'merchant 'sword) 50)))))
 

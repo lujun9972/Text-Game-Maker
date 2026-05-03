@@ -6,10 +6,10 @@
 (require 'level-system)
 (require 'quest-system)
 
-(defvar dialogs-alist nil
+(defvar tg-dialogs-alist nil
   "NPC symbol到Dialog对象的映射")
 
-(defvar dialog-pending nil
+(defvar tg-dialog-pending nil
   "当前等待选择的Dialog对象（nil表示无待处理对话）")
 
 (cl-defstruct Dialog
@@ -27,7 +27,7 @@
 
 ;; --- Config loading ---
 
-(defun build-option (option-data)
+(defun tg-build-option (option-data)
   "根据OPTION-DATA创建DialogOption对象."
   (make-DialogOption
    :text (nth 0 option-data)
@@ -35,7 +35,7 @@
    :condition (nth 2 option-data)
    :effects (nth 3 option-data)))
 
-(defun build-dialog (dialog-entity)
+(defun tg-build-dialog (dialog-entity)
   "根据DIALOG-ENTITY创建Dialog对象."
   (let ((npc (nth 0 dialog-entity))
         (greeting (nth 1 dialog-entity))
@@ -43,16 +43,16 @@
     (cons npc (make-Dialog
                :npc npc
                :greeting greeting
-               :options (mapcar #'build-option options-data)))))
+               :options (mapcar #'tg-build-option options-data)))))
 
-(defun dialog-init (config-file)
+(defun tg-dialog-init (config-file)
   "从CONFIG-FILE加载对话配置."
   (let ((dialog-entities (tg-read-from-whole-string (tg-file-content config-file))))
-    (setq dialogs-alist (mapcar #'build-dialog dialog-entities))))
+    (setq tg-dialogs-alist (mapcar #'tg-build-dialog dialog-entities))))
 
 ;; --- Condition evaluation ---
 
-(defun dialog-evaluate-condition (cond-expr)
+(defun tg-dialog-evaluate-condition (cond-expr)
   "评估条件表达式COND-EXPR."
   (cond
    ((null cond-expr) t)
@@ -65,57 +65,57 @@
    ((eq (car cond-expr) 'has-item)
     (and tg-myself (member (cadr cond-expr) (Creature-inventory tg-myself))))
    ((eq (car cond-expr) 'and)
-    (cl-every #'dialog-evaluate-condition (cdr cond-expr)))
+    (cl-every #'tg-dialog-evaluate-condition (cdr cond-expr)))
    ((eq (car cond-expr) 'or)
-    (cl-some #'dialog-evaluate-condition (cdr cond-expr)))
+    (cl-some #'tg-dialog-evaluate-condition (cdr cond-expr)))
    (t nil)))
 
-(defun dialog-get-visible-options (dialog)
+(defun tg-dialog-get-visible-options (dialog)
   "返回DIALOG中满足条件的选项列表."
   (cl-remove-if-not
-   (lambda (opt) (dialog-evaluate-condition (DialogOption-condition opt)))
+   (lambda (opt) (tg-dialog-evaluate-condition (DialogOption-condition opt)))
    (Dialog-options dialog)))
 
 ;; --- Effect execution ---
 
-(defun dialog-apply-effects (option)
+(defun tg-dialog-apply-effects (option)
   "执行OPTION的效果."
   (dolist (effect (DialogOption-effects option))
     (let ((key (car effect))
           (value (cdr effect)))
       (pcase key
-        ('exp (add-exp-to-creature tg-myself value))
+        ('exp (tg-add-exp-to-creature tg-myself value))
         ('item (tg-add-inventory-to-creature tg-myself value))
         ('bonus-points (tg-take-effect-to-creature tg-myself (cons 'bonus-points value)))
         ('trigger (when (functionp value) (funcall value)))))))
 
 ;; --- Dialog interaction ---
 
-(defun dialog-start (npc-symbol)
+(defun tg-dialog-start (npc-symbol)
   "开始与NPC-SYMBOL的对话."
-  (let ((dialog (cdr (assoc npc-symbol dialogs-alist))))
+  (let ((dialog (cdr (assoc npc-symbol tg-dialogs-alist))))
     (unless dialog
       (throw 'exception (format "无法与%s对话" npc-symbol)))
     (tg-track-quest 'talk npc-symbol)
-    (let ((visible-options (dialog-get-visible-options dialog)))
+    (let ((visible-options (tg-dialog-get-visible-options dialog)))
       (tg-display (format "%s说：%s" npc-symbol (Dialog-greeting dialog)))
       (if (null visible-options)
           (tg-display "没有可用的对话选项")
-        (setq dialog-pending dialog)
+        (setq tg-dialog-pending dialog)
         (dotimes (i (length visible-options))
           (tg-display (format "  %d. %s" (1+ i) (DialogOption-text (nth i visible-options)))))
         (tg-display "请输入选项编号:")))))
 
-(defun dialog-handle-choice (input)
+(defun tg-dialog-handle-choice (input)
   "处理玩家对话选择INPUT."
-  (let* ((visible-options (dialog-get-visible-options dialog-pending))
+  (let* ((visible-options (tg-dialog-get-visible-options tg-dialog-pending))
          (choice (string-to-number input))
-         (npc (Dialog-npc dialog-pending)))
+         (npc (Dialog-npc tg-dialog-pending)))
     (if (and (> choice 0) (<= choice (length visible-options)))
         (let ((option (nth (1- choice) visible-options)))
           (tg-display (format "%s说：%s" npc (DialogOption-response option)))
-          (dialog-apply-effects option)
-          (setq dialog-pending nil))
+          (tg-dialog-apply-effects option)
+          (setq tg-dialog-pending nil))
       (tg-display "请输入有效的选项编号"))))
 
 (provide 'dialog-system)

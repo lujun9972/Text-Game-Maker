@@ -182,10 +182,10 @@
       (when prompt-end
         (setq line (downcase (buffer-substring (1+ prompt-end) (point))))
         (tg-mprinc "\n")
-        (if dialog-pending
+        (if tg-dialog-pending
             (progn
               (dialog-handle-choice line)
-              (npc-run-behaviors))
+              (tg-npc-run-behaviors))
           (let (action-result action things (success nil))
             (setq action-result (catch 'exception
                                   (setq action (car (split-string line)))
@@ -201,7 +201,7 @@
             (when action-result
               (tg-mprinc action-result))
             (when (and success (not (member action tg-passive-actions)))
-              (npc-run-behaviors)))))))
+              (tg-npc-run-behaviors)))))))
   (goto-char (point-max))
   (tg-mprinc "\n")
   (tg-messages))

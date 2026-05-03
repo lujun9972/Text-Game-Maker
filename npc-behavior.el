@@ -6,7 +6,7 @@
 
 ;; --- Condition evaluator ---
 
-(defun npc-evaluate-condition (creature condition)
+(defun tg-npc-evaluate-condition (creature condition)
   "Evaluate CONDITION for CREATURE. Return t or nil."
   (let ((op (car condition))
         (args (cdr condition)))
@@ -22,16 +22,16 @@
        (and tg-current-room
             (member (Creature-symbol tg-myself) (Room-creature tg-current-room))))
       ('and
-       (cl-every (lambda (c) (npc-evaluate-condition creature c)) args))
+       (cl-every (lambda (c) (tg-npc-evaluate-condition creature c)) args))
       ('or
-       (cl-some (lambda (c) (npc-evaluate-condition creature c)) args))
+       (cl-some (lambda (c) (tg-npc-evaluate-condition creature c)) args))
       ('not
-       (not (npc-evaluate-condition creature (car args))))
+       (not (tg-npc-evaluate-condition creature (car args))))
       (_ nil))))
 
 ;; --- Action executor ---
 
-(defun npc-attack-player (creature)
+(defun tg-npc-attack-player (creature)
   "CREATURE attacks the player."
   (let* ((npc-attack (or (cdr (assoc 'attack (Creature-attr creature))) 0))
          (player-defense (or (cdr (assoc 'defense (Creature-attr tg-myself))) 0))
@@ -42,11 +42,11 @@
       (tg-display "你被击败了！游戏结束！")
       (setq tg-over-p t))))
 
-(defun npc-say (creature text)
+(defun tg-npc-say (creature text)
   "CREATURE says TEXT."
   (tg-display (format "%s说：%s" (Creature-symbol creature) text)))
 
-(defun npc-move (creature direction)
+(defun tg-npc-move (creature direction)
   "Move CREATURE in DIRECTION (symbol or 'random)."
   (let* ((sym (Creature-symbol creature))
          (neighbors (tg-beyond-rooms (Room-symbol tg-current-room) tg-room-map))
@@ -68,29 +68,29 @@
           (tg-add-creature-to-room target-room sym))
         (tg-display (format "%s向%s离开了。" sym (cdr (assoc direction dir-names))))))))
 
-(defun npc-apply-buff (creature attr value)
+(defun tg-npc-apply-buff (creature attr value)
   "CREATURE buffs itself with ATTR + VALUE."
   (tg-take-effect-to-creature creature (cons attr value))
   (tg-display (format "%s怒吼一声，%s增强了！" (Creature-symbol creature) attr)))
 
-(defun npc-apply-debuff (creature attr value)
+(defun tg-npc-apply-debuff (creature attr value)
   "CREATURE debuffs player with ATTR - VALUE."
   (tg-take-effect-to-creature tg-myself (cons attr (- value)))
   (tg-display (format "%s对你施放了诅咒，%s降低了！" (Creature-symbol creature) attr)))
 
-(defun npc-execute-action (creature action)
+(defun tg-npc-execute-action (creature action)
   "Execute ACTION for CREATURE."
   (pcase (car action)
-    ('attack (npc-attack-player creature))
-    ('say (npc-say creature (cadr action)))
-    ('move (npc-move creature (cadr action)))
-    ('buff (npc-apply-buff creature (cadr action) (caddr action)))
-    ('debuff (npc-apply-debuff creature (cadr action) (caddr action)))
+    ('attack (tg-tg-npc-attack-player creature))
+    ('say (tg-npc-say creature (cadr action)))
+    ('move (tg-tg-npc-move creature (cadr action)))
+    ('buff (tg-npc-apply-buff creature (cadr action) (caddr action)))
+    ('debuff (tg-npc-apply-debuff creature (cadr action) (caddr action)))
     (_ nil)))
 
 ;; --- Main behavior runner ---
 
-(defun npc-run-behaviors ()
+(defun tg-npc-run-behaviors ()
   "Run behaviors for all NPCs in the current room."
   (when (and tg-current-room (Room-creature tg-current-room))
     (dolist (npc-sym (copy-sequence (Room-creature tg-current-room)))
@@ -103,8 +103,8 @@
             (dolist (rule (Creature-behaviors npc))
               (let ((condition (car rule))
                     (action (cdr rule)))
-                (when (npc-evaluate-condition npc condition)
-                  (npc-execute-action npc action)
+                (when (tg-tg-npc-evaluate-condition npc condition)
+                  (tg-npc-execute-action npc action)
                   (cl-return-from 'behavior-loop))))))))))
 
 (provide 'npc-behavior)

@@ -5,7 +5,7 @@
 (require 'creature-maker)
 (require 'level-system)
 
-(defvar quests-alist nil
+(defvar tg-quests-alist nil
   "symbol到Quest对象的映射")
 
 (cl-defstruct Quest
@@ -22,18 +22,18 @@
 
 ;; --- Config loading ---
 
-(tg-def-config-builder quest quests-alist Quest (symbol description type target count rewards status description-complete))
+(tg-def-config-builder quest tg-quests-alist Quest (symbol description type target count rewards status description-complete))
 
 ;; --- Reward distribution ---
 
-(defun quest-apply-rewards (quest)
+(defun tg-quest-apply-rewards (quest)
   "发放QUEST的奖励."
   (dolist (reward (Quest-rewards quest))
     (let ((key (car reward))
           (value (cdr reward)))
       (pcase key
         ('exp (tg-display (format "任务奖励：获得 %d 点经验值！" value))
-              (add-exp-to-creature tg-myself value))
+              (tg-add-exp-to-creature tg-myself value))
         ('item (tg-display (format "任务奖励：获得 %s！" value))
                (tg-add-inventory-to-creature tg-myself value))
         ('bonus-points (tg-display (format "任务奖励：获得 %d 技能点！" value))
@@ -42,7 +42,7 @@
 
 ;; --- Progress tracking ---
 
-(defun quest-update-progress (quest)
+(defun tg-quest-update-progress (quest)
   "Update quest progress and check completion."
   (cl-incf (Quest-progress quest))
   (when (>= (Quest-progress quest) (Quest-count quest))
@@ -50,39 +50,39 @@
     (tg-display (format "任务完成：%s" (Quest-description quest)))
     (when (Quest-description-complete quest)
       (tg-display (Quest-description-complete quest)))
-    (quest-apply-rewards quest)))
+    (tg-quest-apply-rewards quest)))
 
 (defun tg-track-quest (type target-symbol)
   "追踪TYPE类型、目标为TARGET-SYMBOL的任务进度."
-  (dolist (pair quests-alist)
+  (dolist (pair tg-quests-alist)
     (let ((q (cdr pair)))
       (when (and (eq (Quest-status q) 'active)
                  (eq (Quest-type q) type)
                  (eq (Quest-target q) target-symbol))
-        (quest-update-progress q)))))
+        (tg-quest-update-progress q)))))
 
 ;; --- Quest listing ---
 
-(defun quest-list-active ()
+(defun tg-quest-list-active ()
   "列出所有活跃任务."
-  (cl-remove-if-not (lambda (pair) (eq (Quest-status (cdr pair)) 'active)) quests-alist))
+  (cl-remove-if-not (lambda (pair) (eq (Quest-status (cdr pair)) 'active)) tg-quests-alist))
 
-(defun quest-list-all ()
+(defun tg-quest-list-all ()
   "列出所有任务."
-  quests-alist)
+  tg-quests-alist)
 
-(defun quest-find (name)
+(defun tg-quest-find (name)
   "按symbol或description查找任务，返回(cons symbol quest)或nil."
   (when (stringp name)
     (setq name (intern name)))
-  (or (assoc name quests-alist)
+  (or (assoc name tg-quests-alist)
       (cl-find-if (lambda (pair)
                      (string= (Quest-description (cdr pair)) (symbol-name name)))
-                   quests-alist)))
+                   tg-quests-alist)))
 
-(defun quest-accept (quest-name)
+(defun tg-quest-accept (quest-name)
   "接受指定任务，将状态从inactive改为active."
-  (let* ((pair (quest-find quest-name))
+  (let* ((pair (tg-quest-find quest-name))
          (q (cdr pair)))
     (unless pair
       (throw 'exception (format "没有任务%s" quest-name)))

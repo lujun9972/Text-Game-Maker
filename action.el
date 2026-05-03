@@ -159,9 +159,9 @@
 (tg-defaction tg-status(&optional useless)
   "使用'status'查看自己的状态"
   (tg-display (describe tg-myself))
-  (when quests-alist
+  (when tg-quests-alist
     (tg-display "=== 进行中的任务 ===")
-    (dolist (pair quests-alist)
+    (dolist (pair tg-quests-alist)
       (let ((q (cdr pair)))
         (when (eq (Quest-status q) 'active)
           (tg-display (format "- %s (%d/%d)" (Quest-description q)
@@ -180,12 +180,12 @@
   "使用'talk <NPC>'与NPC对话"
   (unless (tg-creature-exist-in-room-p tg-current-room npc-name)
     (throw 'exception (format "房间中没有%s" npc-name)))
-  (dialog-start npc-name))
+  (tg-dialog-start npc-name))
 
 (tg-defaction tg-quests ()
   "使用'quests'查看当前任务列表"
   (tg-display "=== 任务列表 ===")
-  (dolist (pair quests-alist)
+  (dolist (pair tg-quests-alist)
     (let ((q (cdr pair)))
       (cond ((eq (Quest-status q) 'active)
              (tg-display (format "[进行中] %s (%d/%d)" (Quest-description q) (Quest-progress q) (Quest-count q))))
@@ -209,7 +209,7 @@
 
 (tg-defaction tg-accept (name)
   "使用'accept <任务名>'接受指定任务"
-  (quest-accept name))
+  (tg-quest-accept name))
 
 (tg-defaction tg-save (name)
   "使用'save <名称>'保存游戏到saves/<名称>.sav"
@@ -239,37 +239,37 @@
 
 (tg-defaction tg-shop ()
   "使用'shop'查看当前房间商人的商品"
-  (let ((sk (shop-get-shopkeeper)))
+  (let ((sk (tg-shop-get-shopkeeper)))
     (if (not sk)
         (tg-display "这里没有商人")
       (let* ((npc-sym (Creature-symbol sk))
-             (goods (shop-get-goods npc-sym)))
+             (goods (tg-shop-get-goods npc-sym)))
         (if (not goods)
             (tg-display "商品已售罄")
           (tg-display (format "=== %s 的商店 ===" npc-sym))
           (dolist (item goods)
             (tg-display (format "  %s: %d 金币" (car item) (cdr item))))
-          (tg-display (format "你的金币: %d" player-gold)))))))
+          (tg-display (format "你的金币: %d" tg-player-gold)))))))
 
 (tg-defaction tg-buy (item)
   "使用'buy <物品>'从商人购买物品"
-  (let ((sk (shop-get-shopkeeper)))
+  (let ((sk (tg-shop-get-shopkeeper)))
     (unless sk
       (throw 'exception "这里没有商人"))
     (let* ((npc-sym (Creature-symbol sk))
            (price (shop-get-item-price npc-sym item)))
       (unless price
         (throw 'exception "商人没有这个商品"))
-      (unless (>= player-gold price)
+      (unless (>= tg-player-gold price)
         (throw 'exception "金币不足"))
-      (cl-decf player-gold price)
+      (cl-decf tg-player-gold price)
       (shop-remove-item npc-sym item)
       (tg-add-inventory-to-creature tg-myself item)
-      (tg-display (format "购买了 %s，花费 %d 金币（剩余: %d）" item price player-gold)))))
+      (tg-display (format "购买了 %s，花费 %d 金币（剩余: %d）" item price tg-player-gold)))))
 
 (tg-defaction tg-sell (item)
   "使用'sell <物品>'向商人卖出物品"
-  (let ((sk (shop-get-shopkeeper)))
+  (let ((sk (tg-shop-get-shopkeeper)))
     (unless sk
       (throw 'exception "这里没有商人"))
     (unless (tg-inventory-exist-in-creature-p tg-myself item)
@@ -278,9 +278,9 @@
            (sell-rate (shop-get-sell-rate npc-sym))
            (base-price (or (shop-get-item-price npc-sym item) 5))
            (sell-price (max 1 (floor (* base-price sell-rate)))))
-      (cl-incf player-gold sell-price)
+      (cl-incf tg-player-gold sell-price)
       (tg-remove-inventory-from-creature tg-myself item)
       (shop-add-item npc-sym item base-price)
-      (tg-display (format "卖出了 %s，获得 %d 金币（持有: %d）" item sell-price player-gold)))))
+      (tg-display (format "卖出了 %s，获得 %d 金币（持有: %d）" item sell-price tg-player-gold)))))
 
 (provide 'action)
