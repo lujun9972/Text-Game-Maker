@@ -15,7 +15,7 @@
   (let ((sample-dir sample-game-dir))
     (map-init (expand-file-name "room-config.el" sample-dir)
               (expand-file-name "map-config.el" sample-dir))
-    (inventorys-init (expand-file-name "inventory-config.el" sample-dir))
+    (inventory-init (expand-file-name "inventory-config.el" sample-dir))
     (creatures-init (expand-file-name "creature-config.el" sample-dir))
     (level-init (expand-file-name "level-config.el" sample-dir))
     (quest-init (expand-file-name "quest-config.el" sample-dir))

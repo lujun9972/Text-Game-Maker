@@ -47,17 +47,17 @@
       (should (null (Room-inventory room)))
       (should (null (Room-creature room)))))
 
-;; --- build-rooms ---
+;; --- room-init ---
 
-(ert-deftest test-build-rooms-from-file ()
-  "build-rooms should read config file and create rooms."
+(ert-deftest test-room-init-from-file ()
+  "room-init should read config file and create rooms."
   (test-with-temp-file "(room1 \"Room One\" (key) ())
                          (room2 \"Room Two\" () (goblin))"
     (test-with-globals-saved (rooms-alist)
-      (let ((results (build-rooms temp-file)))
-        (should (= (length results) 2))
-        (should (equal (Room-symbol (cdar results)) 'room1))
-        (should (equal (Room-symbol (cdadr results)) 'room2))))))
+      (room-init temp-file)
+      (should (= (length rooms-alist) 2))
+      (should (equal (Room-symbol (cdar rooms-alist)) 'room1))
+      (should (equal (Room-symbol (cdadr rooms-alist)) 'room2)))))
 
 ;; --- inventory operations ---
 

@@ -21,6 +21,8 @@
   (use-trigger nil :documentation "使用该INVENTORY时触发的事件")
   (wear-trigger nil :documentation "装备该INVENTORY时触发的事件"))
 
+(tg-def-config-builder inventory inventorys-alist Inventory (symbol description type effects))
+
 (cl-defmethod describe ((inventory Inventory))
   "输出inventory的描述"
   (format "这个是%s\n%s\n类型:%s\n使用效果:%s"
@@ -28,19 +30,6 @@
           (Inventory-type inventory) (Inventory-effects inventory)))
 
 ;; 创建inventory列表的方法
-(defun build-inventory (inventory-entity)
-  "根据`text'创建inventory"
-  (cl-multiple-value-bind (symbol description type effects) inventory-entity
-	(cons symbol (make-Inventory :symbol symbol :description description :type type :effects effects))))
-
-(defun build-inventorys(inventory-config-file)
-  "根据`inventory-config-file'中的配置信息创建各个inventory"
-  (let ((inventory-entities (read-from-whole-string (file-content inventory-config-file))))
-	(mapcar #'build-inventory inventory-entities)))
-
-(defun inventorys-init(inventory-config-file)
-  "初始化函数,生成inventory对象"
-  (setq inventorys-alist (build-inventorys inventory-config-file)))
 
 (defun inventory-has-type-p (inventory type)
   "`inventory'是否能被装备"

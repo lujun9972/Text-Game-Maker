@@ -25,6 +25,8 @@
   (in-trigger nil :documentation "进入该ROOM后触发的事件")
   (out-trigger nil :documentation "离开该ROOM后触发的事件"))
 
+(tg-def-config-builder room rooms-alist Room (symbol description inventory creature))
+
 (cl-defgeneric describe (object)
   "Describe an object.")
 
@@ -36,15 +38,6 @@
 	        up-room right-room down-room left-room)))
 
 ;; 创建room列表的方法
-(defun build-room (room-entity)
-  "根据`text'创建room,并将room存入`rooms-alist'中"
-  (cl-multiple-value-bind (symbol description inventory creature) room-entity
-	(cons symbol (make-Room :symbol symbol :description description :inventory inventory :creature creature))))
-
-(defun build-rooms(room-config-file)
-  "根据`room-config-file'中的配置信息创建各个room"
-  (let ((room-entities (read-from-whole-string (file-content room-config-file))))
-	(mapcar #'build-room room-entities)))
 
 (defun remove-inventory-from-room (room inventory)
   ""
@@ -119,7 +112,7 @@
 (defun map-init(room-config-file room-map-config-file)
   "初始化函数,生成room对象,组装map"
   (setq tg-config-dir (file-name-directory room-config-file))
-  (setq rooms-alist (build-rooms room-config-file))
+  (room-init room-config-file)
   (setq room-map (build-room-map room-map-config-file))
   (setq current-room (get-room-by-symbol (caar rooms-alist))))
 

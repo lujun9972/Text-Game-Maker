@@ -22,18 +22,7 @@
 
 ;; --- Config loading ---
 
-(defun build-quest (quest-entity)
-  "根据quest-entity创建Quest对象."
-  (cl-multiple-value-bind (symbol description type target count rewards status description-complete) quest-entity
-    (let ((q (make-Quest :symbol symbol :description description :type type :target target
-                          :count count :rewards rewards :status status
-                          :description-complete description-complete)))
-      (cons symbol q))))
-
-(defun quest-init (config-file)
-  "从CONFIG-FILE加载任务配置."
-  (let ((quest-entities (read-from-whole-string (file-content config-file))))
-    (setq quests-alist (mapcar #'build-quest quest-entities))))
+(tg-def-config-builder quest quests-alist Quest (symbol description type target count rewards status description-complete))
 
 ;; --- Reward distribution ---
 

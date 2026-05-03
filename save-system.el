@@ -93,7 +93,7 @@
       ;; Re-initialize from config files to restore triggers
       (map-init (expand-file-name "room-config.el" tg-config-dir)
                 (expand-file-name "map-config.el" tg-config-dir))
-      (inventorys-init (expand-file-name "inventory-config.el" tg-config-dir))
+      (inventory-init (expand-file-name "inventory-config.el" tg-config-dir))
       (creatures-init (expand-file-name "creature-config.el" tg-config-dir))
       (when (file-exists-p (expand-file-name "level-config.el" tg-config-dir))
         (level-init (expand-file-name "level-config.el" tg-config-dir))))

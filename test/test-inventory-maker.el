@@ -38,25 +38,25 @@
     (should (equal (Inventory-type inv) '(weapon)))
     (should (equal (Inventory-effects inv) '((attack . 5))))))
 
-;; --- build-inventorys ---
+;; --- inventory-init ---
 
-(ert-deftest test-build-inventorys-from-file ()
-  "build-inventorys should read config file and create inventories."
+(ert-deftest test-inventory-init-from-file ()
+  "inventory-init should read config file and create inventories."
   (test-with-temp-file "(potion \"Healing potion\" (usable) ((hp . 10)))
                          (sword \"Sharp sword\" (weapon) ((atk . 5)))"
     (test-with-globals-saved (inventorys-alist)
-      (let ((results (build-inventorys temp-file)))
-        (should (= (length results) 2))
-        (should (equal (Inventory-symbol (cdar results)) 'potion))
-        (should (equal (Inventory-symbol (cdadr results)) 'sword))))))
+      (inventory-init temp-file)
+      (should (= (length inventorys-alist) 2))
+      (should (equal (Inventory-symbol (cdar inventorys-alist)) 'potion))
+      (should (equal (Inventory-symbol (cdadr inventorys-alist)) 'sword)))))
 
-;; --- inventorys-init ---
+;; --- inventory-init (basic) ---
 
 (ert-deftest test-inventorys-init ()
-  "inventorys-init should initialize inventorys-alist."
+  "inventory-init should initialize inventorys-alist."
   (test-with-temp-file "(potion \"A potion\" (usable) ())"
     (test-with-globals-saved (inventorys-alist)
-      (inventorys-init temp-file)
+      (inventory-init temp-file)
       (should (= (length inventorys-alist) 1))
       (should (equal (caar inventorys-alist) 'potion)))))
 
