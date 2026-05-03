@@ -241,7 +241,7 @@ cell      corridor
 (let ((dir "/path/to/config/"))
   (map-init (expand-file-name "room-config.el" dir)
             (expand-file-name "map-config.el" dir))
-  (inventorys-init (expand-file-name "inventory-config.el" dir))
+  (inventory-init (expand-file-name "inventory-config.el" dir))
   (creatures-init (expand-file-name "creature-config.el" dir))
   (tg-mode))
 #+end_src
@@ -595,7 +595,7 @@ Room 结构体：
 |------------------------------+----------------------------|
 | =Inventory=                  | 物品结构体                  |
 | =inventorys-alist=           | 所有物品的 alist            |
-| =inventorys-init=            | 加载物品配置                |
+| =inventory-init=             | 加载物品配置                |
 | =get-inventory-by-symbol=    | 根据 symbol 获取物品对象    |
 | =inventory-usable-p=         | 判断是否为消耗品            |
 | =inventory-wearable-p=       | 判断是否为装备              |

@@ -79,7 +79,7 @@ bedroom     bathroom
 
 #+begin_src elisp
 (map-init "/path/to/room-config" "/path/to/room-map-config")
-(inventorys-init "/path/to/inventory-config")
+(inventory-init "/path/to/inventory-config")
 (creatures-init "/path/to/creature-config")
 (tg-mode)
 #+end_src
