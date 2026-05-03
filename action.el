@@ -196,7 +196,7 @@
 
 (tg-defaction tg-quest (name)
   "使用'quest <名称>'查看指定任务详情"
-  (let* ((pair (quest-find name))
+  (let* ((pair (tg-quest-find name))
          (q (cdr pair)))
     (unless pair
       (throw 'exception (format "没有任务%s" name)))

@@ -184,7 +184,7 @@
         (tg-mprinc "\n")
         (if tg-dialog-pending
             (progn
-              (dialog-handle-choice line)
+              (tg-dialog-handle-choice line)
               (tg-npc-run-behaviors))
           (let (action-result action things (success nil))
             (setq action-result (catch 'exception

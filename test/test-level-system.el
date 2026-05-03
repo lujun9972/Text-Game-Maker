@@ -9,9 +9,9 @@
 
 (ert-deftest test-tg-level-init-loads-config ()
   "tg-level-init should load level config from file."
-  (test-with-temp-file "(tg-level-exp-table 0 100 250 500)
-                         (tg-level-up-bonus-points 3)
-                         (tg-auto-upgrade-attrs ((hp . 5)))"
+  (test-with-temp-file "(level-exp-table 0 100 250 500)
+                         (level-up-bonus-points 3)
+                         (auto-upgrade-attrs ((hp . 5)))"
     (test-with-globals-saved (tg-level-exp-table tg-level-up-bonus-points tg-auto-upgrade-attrs)
       (tg-level-init temp-file)
       (should (equal tg-level-exp-table '(0 100 250 500)))
