@@ -5,22 +5,22 @@
 (require 'text-game-maker)
 (require 'quest-system)
 
-;; --- quest-init ---
+;; --- tg-quest-init ---
 
 (ert-deftest test-quest-init-loads-config ()
-  "quest-init should load quests from config file."
+  "tg-quest-init should load quests from config file."
   (test-with-temp-file "(kill-rats \"消灭老鼠\" kill rat 3 ((exp . 15)) inactive \"老鼠被消灭了！\")\n(find-key \"找到钥匙\" collect key 1 ((exp . 20)) inactive \"你找到了钥匙！\")"
     (test-with-globals-saved (quests-alist)
-      (quest-init temp-file)
+      (tg-quest-init temp-file)
       (should (= (length quests-alist) 2))
       (should (equal (Quest-type (cdr (assoc 'kill-rats quests-alist))) 'kill))
       (should (equal (Quest-type (cdr (assoc 'find-key quests-alist))) 'collect)))))
 
 (ert-deftest test-quest-init-preserves-status ()
-  "quest-init should preserve status from config file."
+  "tg-quest-init should preserve status from config file."
   (test-with-temp-file "(test-quest \"Test\" kill rat 1 ((exp . 10)) inactive \"Done!\")"
     (test-with-globals-saved (quests-alist)
-      (quest-init temp-file)
+      (tg-quest-init temp-file)
       (should (eq (Quest-status (cdr (assoc 'test-quest quests-alist))) 'inactive)))))
 
 (ert-deftest test-quest-accept-activates ()

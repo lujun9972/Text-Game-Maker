@@ -25,11 +25,11 @@
     (setq rooms-alist nil)
     (should (null (get-room-by-symbol 'anything)))))
 
-;; --- build-room ---
+;; --- tg-build-room ---
 
 (ert-deftest test-build-room-from-tuple ()
-  "build-room should create a room from a tuple."
-  (let* ((result (build-room '(kitchen "A kitchen" (knife) (cook))))
+  "tg-build-room should create a room from a tuple."
+  (let* ((result (tg-build-room '(kitchen "A kitchen" (knife) (cook))))
          (room (cdr result)))
     (should (equal (car result) 'kitchen))
     (should (equal (Room-symbol room) 'kitchen))
@@ -38,8 +38,8 @@
     (should (equal (Room-creature room) '(cook)))))
 
 (ert-deftest test-build-room-minimal ()
-  "build-room should work with minimal tuple (just symbol and description)."
-  (let* ((result (build-room '(cellar "A dark cellar")))
+  "tg-build-room should work with minimal tuple (just symbol and description)."
+  (let* ((result (tg-build-room '(cellar "A dark cellar")))
            (room (cdr result)))
       (should (equal (car result) 'cellar))
       (should (equal (Room-symbol room) 'cellar))
@@ -47,14 +47,14 @@
       (should (null (Room-inventory room)))
       (should (null (Room-creature room)))))
 
-;; --- room-init ---
+;; --- tg-room-init ---
 
 (ert-deftest test-room-init-from-file ()
-  "room-init should read config file and create rooms."
+  "tg-room-init should read config file and create rooms."
   (test-with-temp-file "(room1 \"Room One\" (key) ())
                          (room2 \"Room Two\" () (goblin))"
     (test-with-globals-saved (rooms-alist)
-      (room-init temp-file)
+      (tg-room-init temp-file)
       (should (= (length rooms-alist) 2))
       (should (equal (Room-symbol (cdar rooms-alist)) 'room1))
       (should (equal (Room-symbol (cdadr rooms-alist)) 'room2)))))

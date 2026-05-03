@@ -26,11 +26,11 @@
     (setq inventorys-alist nil)
     (should (null (get-inventory-by-symbol 'nonexistent t)))))
 
-;; --- build-inventory ---
+;; --- tg-build-inventory ---
 
 (ert-deftest test-build-inventory-from-tuple ()
-  "build-inventory should create inventory from a tuple."
-  (let* ((result (build-inventory '(sword "A sharp sword" (weapon) ((attack . 5)))))
+  "tg-build-inventory should create inventory from a tuple."
+  (let* ((result (tg-build-inventory '(sword "A sharp sword" (weapon) ((attack . 5)))))
          (inv (cdr result)))
     (should (equal (car result) 'sword))
     (should (equal (Inventory-symbol inv) 'sword))
@@ -38,25 +38,25 @@
     (should (equal (Inventory-type inv) '(weapon)))
     (should (equal (Inventory-effects inv) '((attack . 5))))))
 
-;; --- inventory-init ---
+;; --- tg-inventory-init ---
 
 (ert-deftest test-inventory-init-from-file ()
-  "inventory-init should read config file and create inventories."
+  "tg-inventory-init should read config file and create inventories."
   (test-with-temp-file "(potion \"Healing potion\" (usable) ((hp . 10)))
                          (sword \"Sharp sword\" (weapon) ((atk . 5)))"
     (test-with-globals-saved (inventorys-alist)
-      (inventory-init temp-file)
+      (tg-inventory-init temp-file)
       (should (= (length inventorys-alist) 2))
       (should (equal (Inventory-symbol (cdar inventorys-alist)) 'potion))
       (should (equal (Inventory-symbol (cdadr inventorys-alist)) 'sword)))))
 
-;; --- inventory-init (basic) ---
+;; --- tg-inventory-init (basic) ---
 
 (ert-deftest test-inventorys-init ()
-  "inventory-init should initialize inventorys-alist."
+  "tg-inventory-init should initialize inventorys-alist."
   (test-with-temp-file "(potion \"A potion\" (usable) ())"
     (test-with-globals-saved (inventorys-alist)
-      (inventory-init temp-file)
+      (tg-inventory-init temp-file)
       (should (= (length inventorys-alist) 1))
       (should (equal (caar inventorys-alist) 'potion)))))
 

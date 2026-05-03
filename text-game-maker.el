@@ -21,8 +21,8 @@ NAME: 模块名 (如 room, inventory, quest)
 ALIST-VAR: 存储结果的 alist 变量 (如 rooms-alist)
 STRUCT-NAME: cl-defstruct 名 (如 Room, Inventory, Quest)
 FIELDS: 解构和构造用的字段名列表"
-  (let ((build-fn (intern (format "build-%s" name)))
-        (init-fn (intern (format "%s-init" name)))
+  (let ((build-fn (intern (format "tg-build-%s" name)))
+        (init-fn (intern (format "tg-%s-init" name)))
         (entity-var (intern (format "%s-entity" name)))
         (constructor (intern (format "make-%s" struct-name))))
     `(progn
