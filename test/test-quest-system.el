@@ -49,7 +49,7 @@
     (let ((q (make-Quest :symbol 'kill-goblin :type 'kill :target 'goblin :count 3 :progress 0 :status 'active)))
       (setq quests-alist (list (cons 'kill-goblin q)))
       (setq display-fn #'ignore)
-      (quest-track-kill 'goblin)
+      (tg-track-quest 'kill 'goblin)
       (should (= (Quest-progress q) 1))
       (should (eq (Quest-status q) 'active)))))
 
@@ -61,7 +61,7 @@
           (output nil))
       (setq quests-alist (list (cons 'kill-rat q)))
       (setq display-fn (lambda (&rest args) (push args output)))
-      (quest-track-kill 'rat)
+      (tg-track-quest 'kill 'rat)
       (should (= (Quest-progress q) 1))
       (should (eq (Quest-status q) 'completed)))))
 
@@ -72,7 +72,7 @@
                           :status 'completed)))
       (setq quests-alist (list (cons 'kill-rat q)))
       (setq display-fn #'ignore)
-      (quest-track-kill 'rat)
+      (tg-track-quest 'kill 'rat)
       (should (= (Quest-progress q) 1)))))
 
 (ert-deftest test-quest-track-kill-no-match ()
@@ -81,7 +81,7 @@
     (let ((q (make-Quest :symbol 'kill-goblin :type 'kill :target 'goblin :count 1 :progress 0 :status 'active)))
       (setq quests-alist (list (cons 'kill-goblin q)))
       (setq display-fn #'ignore)
-      (quest-track-kill 'rat)
+      (tg-track-quest 'kill 'rat)
       (should (= (Quest-progress q) 0)))))
 
 ;; --- quest-track-collect ---
@@ -92,7 +92,7 @@
     (let ((q (make-Quest :symbol 'find-key :type 'collect :target 'key :count 1 :progress 0 :status 'active)))
       (setq quests-alist (list (cons 'find-key q)))
       (setq display-fn #'ignore)
-      (quest-track-collect 'key)
+      (tg-track-quest 'collect 'key)
       (should (= (Quest-progress q) 1))
       (should (eq (Quest-status q) 'completed)))))
 
@@ -104,7 +104,7 @@
     (let ((q (make-Quest :symbol 'reach-hall :type 'explore :target 'hall :count 1 :progress 0 :status 'active)))
       (setq quests-alist (list (cons 'reach-hall q)))
       (setq display-fn #'ignore)
-      (quest-track-explore 'hall)
+      (tg-track-quest 'explore 'hall)
       (should (= (Quest-progress q) 1))
       (should (eq (Quest-status q) 'completed)))))
 
@@ -116,7 +116,7 @@
     (let ((q (make-Quest :symbol 'talk-guard :type 'talk :target 'guard :count 1 :progress 0 :status 'active)))
       (setq quests-alist (list (cons 'talk-guard q)))
       (setq display-fn #'ignore)
-      (quest-track-talk 'guard)
+      (tg-track-quest 'talk 'guard)
       (should (= (Quest-progress q) 1))
       (should (eq (Quest-status q) 'completed)))))
 

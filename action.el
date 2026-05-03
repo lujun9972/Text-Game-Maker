@@ -37,7 +37,7 @@
     (when (Room-in-trigger current-room)
       (funcall (Room-in-trigger current-room)))
     (tg-display (describe current-room))
-    (quest-track-explore new-room-symbol)))
+    (tg-track-quest 'explore new-room-symbol)))
 
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境
@@ -56,7 +56,7 @@
                            ((Creature-p object) (Creature-watch-trigger object)))))
       (funcall trig))
     (when (and symbol (Creature-p object))
-      (quest-track-talk symbol))
+      (tg-track-quest 'talk symbol))
     (describe object)))
 
 (tg-defaction tg-take (inventory)
@@ -70,7 +70,7 @@
       (funcall trig))
     (add-inventory-to-creature myself inventory)
     (remove-inventory-from-room current-room inventory)
-    (quest-track-collect inventory)))
+    (tg-track-quest 'collect inventory)))
 
 (tg-defaction tg-drop (inventory)
   "使用'drop 物品'丢弃身上的物品"
@@ -134,7 +134,7 @@
           (when-let* ((trig (Creature-death-trigger target-creature)))
             (funcall trig))
           (tg-display (format "%s被击败了！" target))
-          (quest-track-kill target)
+          (tg-track-quest 'kill target)
           (let ((exp-gained (get-exp-reward target-creature)))
             (tg-display (format "获得 %d 点经验值！" exp-gained))
             (add-exp-to-creature myself exp-gained)))

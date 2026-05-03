@@ -96,7 +96,7 @@
   (let ((dialog (cdr (assoc npc-symbol dialogs-alist))))
     (unless dialog
       (throw 'exception (format "无法与%s对话" npc-symbol)))
-    (quest-track-talk npc-symbol)
+    (tg-track-quest 'talk npc-symbol)
     (let ((visible-options (dialog-get-visible-options dialog)))
       (tg-display (format "%s说：%s" npc-symbol (Dialog-greeting dialog)))
       (if (null visible-options)

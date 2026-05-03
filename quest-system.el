@@ -63,40 +63,13 @@
       (tg-display (Quest-description-complete quest)))
     (quest-apply-rewards quest)))
 
-(defun quest-track-kill (target-symbol)
-  "追踪击杀TARGET-SYMBOL的任务进度."
+(defun tg-track-quest (type target-symbol)
+  "追踪TYPE类型、目标为TARGET-SYMBOL的任务进度."
   (dolist (pair quests-alist)
     (let ((q (cdr pair)))
       (when (and (eq (Quest-status q) 'active)
-                 (eq (Quest-type q) 'kill)
+                 (eq (Quest-type q) type)
                  (eq (Quest-target q) target-symbol))
-        (quest-update-progress q)))))
-
-(defun quest-track-collect (item-symbol)
-  "追踪收集ITEM-SYMBOL的任务进度."
-  (dolist (pair quests-alist)
-    (let ((q (cdr pair)))
-      (when (and (eq (Quest-status q) 'active)
-                 (eq (Quest-type q) 'collect)
-                 (eq (Quest-target q) item-symbol))
-        (quest-update-progress q)))))
-
-(defun quest-track-explore (room-symbol)
-  "追踪探索ROOM-SYMBOL的任务进度."
-  (dolist (pair quests-alist)
-    (let ((q (cdr pair)))
-      (when (and (eq (Quest-status q) 'active)
-                 (eq (Quest-type q) 'explore)
-                 (eq (Quest-target q) room-symbol))
-        (quest-update-progress q)))))
-
-(defun quest-track-talk (npc-symbol)
-  "追踪与NPC-SYMBOL对话的任务进度."
-  (dolist (pair quests-alist)
-    (let ((q (cdr pair)))
-      (when (and (eq (Quest-status q) 'active)
-                 (eq (Quest-type q) 'talk)
-                 (eq (Quest-target q) npc-symbol))
         (quest-update-progress q)))))
 
 ;; --- Quest listing ---
