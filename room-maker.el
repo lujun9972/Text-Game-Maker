@@ -13,7 +13,7 @@
 
 (defun get-room-by-symbol (symbol)
   "根据symbol获取room对象"
-  (cdr (assoc symbol rooms-alist)))
+  (tg-get-entity rooms-alist symbol t))
 
 ;; 定义Room结构体
 (cl-defstruct Room

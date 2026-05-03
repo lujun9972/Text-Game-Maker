@@ -7,12 +7,7 @@
 
 (defun get-inventory-by-symbol (symbol &optional noexception)
   "根据symbol获取inventory对象"
-  (let (object)
-	(setq object (cdr (assoc symbol inventorys-alist)))
-	(when (and (null object)
-			   (null noexception))
-	  (throw 'exception (format "没有定义该物品[%s]" symbol)))
-	object))
+  (tg-get-entity inventorys-alist symbol noexception "没有定义该物品[%s]"))
 
 (cl-defstruct Inventory
   "Inventory structure"

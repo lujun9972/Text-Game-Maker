@@ -7,7 +7,7 @@
 
 (defun get-creature-by-symbol (symbol)
   "根据symbol获取creature对象"
-  (cdr (assoc symbol creatures-alist)))
+  (tg-get-entity creatures-alist symbol t))
 
 (cl-defstruct Creature
   "Creature structure"
