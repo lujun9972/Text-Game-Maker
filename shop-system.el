@@ -10,24 +10,23 @@
   "玩家持有金币数量")
 
 (defvar shop-alist nil
-  "商品列表缓存，格式 ((npc-symbol . (sell-rate . ((item . price) ...))) ...)")
+  "商品列表缓存，格式 ((npc-symbol . ShopConfig) ...)")
+
+(cl-defstruct ShopConfig
+  "ShopConfig structure"
+  (sell-rate 0.5 :documentation "卖出折扣率")
+  (goods nil :documentation "商品列表 ((item-symbol . price) ...)"))
 
 ;; --- Config loading ---
 
 (defun build-shop-entry (shop-entity)
-  "根据SHOP-ENTITY创建商店条目.
-SHOP-ENTITY 格式: (npc-symbol sell-rate ((item-symbol . price) ...))"
-  (let ((npc-symbol (nth 0 shop-entity))
-        (sell-rate (nth 1 shop-entity))
-        (goods (nth 2 shop-entity)))
-    (cons npc-symbol (cons sell-rate goods))))
+  "根据SHOP-ENTITY创建商店条目."
+  (cl-multiple-value-bind (npc-symbol sell-rate goods) shop-entity
+    (cons npc-symbol (make-ShopConfig :sell-rate sell-rate :goods goods))))
 
 (defun shop-init (config-file)
   "从CONFIG-FILE加载商品配置."
-  (let* ((content (with-temp-buffer
-                    (insert-file-contents config-file)
-                    (buffer-string)))
-         (shop-entities (read-from-whole-string content)))
+  (let ((shop-entities (read-from-whole-string (file-content config-file))))
     (setq shop-alist (mapcar #'build-shop-entry shop-entities))))
 
 ;; --- Helpers ---
@@ -43,12 +42,12 @@ SHOP-ENTITY 格式: (npc-symbol sell-rate ((item-symbol . price) ...))"
 (defun shop-get-goods (npc-symbol)
   "返回NPC-SYMBOL对应的商品列表."
   (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry (cdr (cdr entry)))))
+    (when entry (ShopConfig-goods (cdr entry)))))
 
 (defun shop-get-sell-rate (npc-symbol)
   "返回NPC-SYMBOL对应的卖出折扣率."
   (let ((entry (assoc npc-symbol shop-alist)))
-    (when entry (car (cdr entry)))))
+    (when entry (ShopConfig-sell-rate (cdr entry)))))
 
 (defun shop-get-item-price (npc-symbol item-symbol)
   "返回NPC-SYMBOL的商品列表中ITEM-SYMBOL的价格."
@@ -60,12 +59,13 @@ SHOP-ENTITY 格式: (npc-symbol sell-rate ((item-symbol . price) ...))"
   "从NPC-SYMBOL的商品列表中移除ITEM-SYMBOL."
   (let ((entry (assoc npc-symbol shop-alist)))
     (when entry
-      (setf (cdr (cdr entry)) (assq-delete-all item-symbol (cdr (cdr entry)))))))
+      (setf (ShopConfig-goods (cdr entry))
+            (assq-delete-all item-symbol (ShopConfig-goods (cdr entry)))))))
 
 (defun shop-add-item (npc-symbol item-symbol price)
-  "向NPC-SYMBOL的商品列表中添加ITEM-SYMBOL，价格为PRICE."
+  "向NPC-SYMBOL的商品列表中添加ITEM-SYMBOL."
   (let ((entry (assoc npc-symbol shop-alist)))
     (when entry
-      (setf (cdr (cdr entry)) (append (cdr (cdr entry)) (list (cons item-symbol price)))))))
+      (push (cons item-symbol price) (ShopConfig-goods (cdr entry))))))
 
 (provide 'shop-system)

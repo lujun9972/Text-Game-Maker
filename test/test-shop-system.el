@@ -22,8 +22,8 @@
       (shop-init temp-file)
       (let ((entry (cdr (assoc 'goblin-merchant shop-alist))))
         (should entry)
-        (should (= (car entry) 0.3))
-        (should (equal (cdr entry) '((bread . 10) (health-potion . 25))))))))
+        (should (= (ShopConfig-sell-rate entry) 0.3))
+        (should (equal (ShopConfig-goods entry) '((bread . 10) (health-potion . 25))))))))
 
 (ert-deftest test-shop-init-multiple-merchants ()
   "shop-init should handle multiple merchants."
@@ -67,7 +67,7 @@
 (ert-deftest test-shop-get-goods ()
   "shop-get-goods should return goods list for a merchant."
   (test-with-globals-saved (shop-alist)
-    (setq shop-alist '((merchant . (0.5 . ((sword . 30) (bread . 10))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 30) (bread . 10))))))
     (should (equal (shop-get-goods 'merchant) '((sword . 30) (bread . 10))))))
 
 (ert-deftest test-shop-get-goods-unknown ()
@@ -79,13 +79,13 @@
 (ert-deftest test-shop-get-sell-rate ()
   "shop-get-sell-rate should return sell rate for merchant."
   (test-with-globals-saved (shop-alist)
-    (setq shop-alist '((merchant . (0.3 . ((sword . 30))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.3 :goods '((sword . 30))))))
     (should (= (shop-get-sell-rate 'merchant) 0.3))))
 
 (ert-deftest test-shop-get-item-price ()
   "shop-get-item-price should return price of item in merchant's goods."
   (test-with-globals-saved (shop-alist)
-    (setq shop-alist '((merchant . (0.5 . ((sword . 30) (bread . 10))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 30) (bread . 10))))))
     (should (= (shop-get-item-price 'merchant 'sword) 30))
     (should (= (shop-get-item-price 'merchant 'bread) 10))
     (should-not (shop-get-item-price 'merchant 'unknown))))
@@ -93,14 +93,14 @@
 (ert-deftest test-shop-remove-item ()
   "shop-remove-item should remove item from merchant's goods."
   (test-with-globals-saved (shop-alist)
-    (setq shop-alist '((merchant . (0.5 . ((sword . 30) (bread . 10))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 30) (bread . 10))))))
     (shop-remove-item 'merchant 'sword)
     (should (equal (shop-get-goods 'merchant) '((bread . 10))))))
 
 (ert-deftest test-shop-add-item ()
   "shop-add-item should add item to merchant's goods."
   (test-with-globals-saved (shop-alist)
-    (setq shop-alist '((merchant . (0.5 . ((sword . 30))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 30))))))
     (shop-add-item 'merchant 'bread 10)
     (should (member '(bread . 10) (shop-get-goods 'merchant)))))
 

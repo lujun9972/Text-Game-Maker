@@ -174,7 +174,7 @@
     (setq current-room (make-Room :symbol 'start :description "Start"))
     (push (cons 'start current-room) rooms-alist)
     (setq room-map '((start)))
-    (setq shop-alist '((merchant . (0.5 . ((sword . 50))))))
+    (setq shop-alist (list (cons 'merchant (make-ShopConfig :sell-rate 0.5 :goods '((sword . 50))))))
     (test-with-temp-file ""
       (tg-save-game temp-file)
       (setq shop-alist nil)
