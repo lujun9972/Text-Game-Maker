@@ -18,6 +18,12 @@
      (defun ,action ,args
        ,doc-string
        ,@body)))
+
+(defmacro tg-run-trigger (accessor object)
+  "如果ACCESSOR从OBJECT返回的触发器非nil，则调用它。"
+  `(when-let* ((trig (,accessor ,object)))
+     (funcall trig)))
+
 ;; 移动到各rooms的命令
 (tg-defaction tg-move(directory)
   "使用'move up/right/down/left'往`directory'方向移动"
@@ -30,12 +36,10 @@
     (unless new-room-symbol
       (throw 'exception "那里没有路"))
     ;; 触发离开事件
-    (when (Room-out-trigger current-room)
-      (funcall (Room-out-trigger current-room)))
+    (tg-run-trigger Room-out-trigger current-room)
     (setq current-room (get-room-by-symbol new-room-symbol))
     ;; 触发进入事件
-    (when (Room-in-trigger current-room)
-      (funcall (Room-in-trigger current-room)))
+    (tg-run-trigger Room-in-trigger current-room)
     (tg-display (describe current-room))
     (tg-track-quest 'explore new-room-symbol)))
 
@@ -66,8 +70,7 @@
   (unless (inventory-exist-in-room-p current-room inventory)
     (throw 'exception (format "房间中没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
-    (when-let* ((trig (Inventory-take-trigger object)))
-      (funcall trig))
+    (tg-run-trigger Inventory-take-trigger object)
     (add-inventory-to-creature myself inventory)
     (remove-inventory-from-room current-room inventory)
     (tg-track-quest 'collect inventory)))
@@ -79,8 +82,7 @@
   (unless (inventory-exist-in-creature-p myself inventory)
     (throw 'exception (format "身上没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
-    (when-let* ((trig (Inventory-drop-trigger object)))
-      (funcall trig))
+    (tg-run-trigger Inventory-drop-trigger object)
     (remove-inventory-from-creature myself inventory)
     (add-inventory-to-room current-room inventory)))
 
@@ -93,8 +95,7 @@
   (unless (inventory-usable-p inventory)
     (throw 'exception (format "%s不可使用" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
-    (when-let* ((trig (Inventory-use-trigger object)))
-      (funcall trig))
+    (tg-run-trigger Inventory-use-trigger object)
     (take-effects-to-creature myself (Inventory-effects object))
     (remove-inventory-from-creature myself inventory)))
 
@@ -107,8 +108,7 @@
   (unless (inventory-wearable-p equipment)
     (throw 'exception (format "%s不可装备" equipment)))
   (let ((object (get-inventory-by-symbol equipment)))
-    (when-let* ((trig (Inventory-wear-trigger object)))
-      (funcall trig))
+    (tg-run-trigger Inventory-wear-trigger object)
     (take-effects-to-creature myself (Inventory-effects object))
     (remove-inventory-from-creature myself equipment)
     (add-equipment-to-creature myself equipment)
@@ -131,8 +131,7 @@
     (if (<= (cdr (assoc 'hp (Creature-attr target-creature))) 0)
         (progn
           (remove-creature-from-room current-room target)
-          (when-let* ((trig (Creature-death-trigger target-creature)))
-            (funcall trig))
+          (tg-run-trigger Creature-death-trigger target-creature)
           (tg-display (format "%s被击败了！" target))
           (tg-track-quest 'kill target)
           (let ((exp-gained (get-exp-reward target-creature)))
