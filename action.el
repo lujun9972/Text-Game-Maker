@@ -13,11 +13,18 @@
 ;; action functions
 (defmacro tg-defaction (action args doc-string &rest body)
   (declare (indent defun))
-  `(progn
-     (add-to-list 'tg-valid-actions ',action)
-     (defun ,action ,args
-       ,doc-string
-       ,@body)))
+  (let ((intern-forms
+         (delq nil
+               (mapcar (lambda (arg)
+                         (unless (member arg '(&optional &rest))
+                           `(when (stringp ,arg) (setq ,arg (intern ,arg)))))
+                       args))))
+    `(progn
+       (add-to-list 'tg-valid-actions ',action)
+       (defun ,action ,args
+         ,doc-string
+         ,@intern-forms
+         ,@body))))
 
 (defmacro tg-run-trigger (accessor object)
   "如果ACCESSOR从OBJECT返回的触发器非nil，则调用它。"
@@ -27,8 +34,6 @@
 ;; 移动到各rooms的命令
 (tg-defaction tg-move(directory)
   "使用'move up/right/down/left'往`directory'方向移动"
-  (when (stringp directory)
-    (setq directory (intern directory)))
   (setq directory (cdr (assoc directory '((up . 0) (right . 1) (down . 2) (left . 3)))))
   (unless directory
     (throw 'exception "未知的方向"))
@@ -46,8 +51,6 @@
 (tg-defaction tg-watch (&optional symbol)
   "使用'watch'查看周围环境
 使用'watch 物品'查看指定物品"
-  (cond ((stringp symbol)
-         (setq symbol (intern symbol))))
   (unless (or (null symbol)
               (inventory-exist-in-room-p current-room symbol)
               (creature-exist-in-room-p current-room symbol))
@@ -65,8 +68,6 @@
 
 (tg-defaction tg-take (inventory)
   "使用'take 物品'获取ROOM中的物品"
-  (cond ((stringp inventory)
-         (setq inventory (intern inventory))))
   (unless (inventory-exist-in-room-p current-room inventory)
     (throw 'exception (format "房间中没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
@@ -77,8 +78,6 @@
 
 (tg-defaction tg-drop (inventory)
   "使用'drop 物品'丢弃身上的物品"
-  (cond ((stringp inventory)
-         (setq inventory (intern inventory))))
   (unless (inventory-exist-in-creature-p myself inventory)
     (throw 'exception (format "身上没有%s" inventory)))
   (let ((object (get-inventory-by-symbol inventory)))
@@ -88,8 +87,6 @@
 
 (tg-defaction tg-use (inventory)
   "使用'use 物品'消耗自己随身携带的inventory"
-  (cond ((stringp inventory)
-         (setq inventory (intern inventory))))
   (unless (inventory-exist-in-creature-p myself inventory)
     (throw 'exception (format "未携带%s" inventory)))
   (unless (inventory-usable-p inventory)
@@ -101,8 +98,6 @@
 
 (tg-defaction tg-wear (equipment)
   "使用'wear 物品'装备自己随身携带的equipment"
-  (cond ((stringp equipment)
-         (setq equipment (intern equipment))))
   (unless (inventory-exist-in-creature-p myself equipment)
     (throw 'exception (format "未携带%s" equipment)))
   (unless (inventory-wearable-p equipment)
@@ -116,8 +111,6 @@
 
 (tg-defaction tg-attack (target)
   "使用'attack <target>'攻击当前房间中的生物"
-  (when (stringp target)
-    (setq target (intern target)))
   (unless (creature-exist-in-room-p current-room target)
     (throw 'exception (format "房间中没有%s" target)))
   (let* ((target-creature (get-creature-by-symbol target))
@@ -151,13 +144,11 @@
 
 (tg-defaction tg-upgrade (attr points)
   "使用'upgrade <属性> <点数>'消耗技能点提升指定属性"
-  (when (stringp attr)
-    (setq attr (intern attr)))
   (unless (assoc 'bonus-points (Creature-attr myself))
     (throw 'exception "没有bonus-points属性"))
   (unless (assoc attr (Creature-attr myself))
     (throw 'exception (format "没有%s属性，无法分配" attr)))
-  (let ((pts (string-to-number (or points "0")))
+  (let ((pts (string-to-number (if points (format "%s" points) "0")))
         (available (cdr (assoc 'bonus-points (Creature-attr myself)))))
     (unless (> pts 0)
       (throw 'exception "请输入有效的点数"))
@@ -189,8 +180,6 @@
     (tg-display (documentation action))))
 (tg-defaction tg-talk (npc-name)
   "使用'talk <NPC>'与NPC对话"
-  (when (stringp npc-name)
-    (setq npc-name (intern npc-name)))
   (unless (creature-exist-in-room-p current-room npc-name)
     (throw 'exception (format "房间中没有%s" npc-name)))
   (dialog-start npc-name))
@@ -228,22 +217,22 @@
   "使用'save <名称>'保存游戏到saves/<名称>.sav"
   (unless name
     (throw 'exception "请输入存档名称"))
-  (let ((save-dir (if tg-config-dir
-                      (expand-file-name "saves" tg-config-dir)
-                    "saves"))
-        (save-path nil))
-    (setq save-path (expand-file-name (concat name ".sav") save-dir))
+  (let* ((save-dir (if tg-config-dir
+                       (expand-file-name "saves" tg-config-dir)
+                     "saves"))
+         (save-name (format "%s" name))
+         (save-path (expand-file-name (concat save-name ".sav") save-dir)))
     (tg-save-game save-path)))
 
 (tg-defaction tg-load (name)
   "使用'load <名称>'从saves/<名称>.sav恢复游戏"
   (unless name
     (throw 'exception "请输入存档名称"))
-  (let ((save-dir (if tg-config-dir
-                      (expand-file-name "saves" tg-config-dir)
-                    "saves"))
-        (save-path nil))
-    (setq save-path (expand-file-name (concat name ".sav") save-dir))
+  (let* ((save-dir (if tg-config-dir
+                       (expand-file-name "saves" tg-config-dir)
+                     "saves"))
+         (save-name (format "%s" name))
+         (save-path (expand-file-name (concat save-name ".sav") save-dir)))
     (tg-load-game save-path)))
 
 (tg-defaction tg-quit()
@@ -266,8 +255,6 @@
 
 (tg-defaction tg-buy (item)
   "使用'buy <物品>'从商人购买物品"
-  (when (stringp item)
-    (setq item (intern item)))
   (let ((sk (shop-get-shopkeeper)))
     (unless sk
       (throw 'exception "这里没有商人"))
@@ -284,8 +271,6 @@
 
 (tg-defaction tg-sell (item)
   "使用'sell <物品>'向商人卖出物品"
-  (when (stringp item)
-    (setq item (intern item)))
   (let ((sk (shop-get-shopkeeper)))
     (unless sk
       (throw 'exception "这里没有商人"))
