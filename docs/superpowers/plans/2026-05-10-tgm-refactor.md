@@ -4,7 +4,7 @@
 
 **目标：** 基于 ifgame 架构思想全量重写 Text-Game-Maker，将命令解析改为 PEG 自然语言、动作分发改为 handler chain、对象模型改为属性驱动、地图改为方向出口，同时保留并重写任务/商店/对话/NPC AI/等级/存档等周边系统。
 
-**架构：** 18 个模块位于项目根目录，单向无环依赖。底层 tg-registry 提供数据基础，tg-object → tg-creature → tg-game 构成实体链（creature 的 effective-attr 需要 object，game 的 buffs-apply 需要 creature），tg-room 独立，tg-action + tg-parser + tg-commands 构成核心引擎，上层 tg-dialog/tg-npc/tg-quest/tg-shop/tg-level 提供周边功能，tg-config/tg-save 处理持久化（config 先于 save），tg-mode 提供 UI。
+**架构：** 18 个模块位于项目根目录，单向无环依赖。底层 tg-registry 提供数据基础，tg-object → tg-creature → tg-game 构成实体链（creature 的 effective-attr 需要 object，game 的 buffs-apply 需要 creature），tg-room 依赖 object（all-visible-objects），tg-action + tg-parser + tg-commands 构成核心引擎，上层 tg-dialog/tg-npc/tg-quest/tg-shop/tg-level 提供周边功能，tg-config/tg-save 处理持久化（config 先于 save），tg-mode 提供 UI。
 
 **技术栈：** Emacs Lisp，peg.el（内置），ERT 测试框架，Org-mode 配置格式
 
@@ -106,12 +106,60 @@
 
 - [ ] **步骤 5：Commit**
 
-### 任务 2：tg-game.el — 游戏动态状态
+### 任务 2：tg-object.el — 对象属性系统
 
-**依赖：** 任务 1, 任务 5
+**依赖：** 任务 1
+**文件集：** `tg-object.el`, `test/tg-object-test.el`
+**导出/变更接口：** `tg-object.el::tg-object-symbol`, `tg-object.el::tg-object-name`, `tg-object.el::tg-object-synonyms`, `tg-object.el::tg-object-contents`, `tg-object.el::tg-object-supports`, `tg-object.el::tg-object-props`, `tg-object.el::tg-object-state`, `tg-object.el::tg-object-key`, `tg-object.el::tg-object-effects`, `tg-object.el::tg-object-handler`, `tg-object.el::tg-object-takeable-p`, `tg-object.el::tg-object-container-p`, `tg-object.el::tg-object-supporter-p`, `tg-object.el::tg-object-open-p`, `tg-object.el::tg-object-locked-p`, `tg-object.el::tg-object-wearable-p`, `tg-object.el::tg-object-accessible-p`, `tg-object.el::tg-object-find`, `tg-object.el::tg-object-find-parent`, `tg-object.el::tg-object-find-in-room`, `tg-object.el::tg-object-find-in-inventory`, `tg-object.el::tg-object-move`
+**消费接口：** `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-object`, `tg-registry.el::tg--objects`
+**复杂度：** deep
+
+**文件：**
+- 创建：`tg-object.el`
+- 创建：`test/tg-object-test.el`
+
+- [ ] **步骤 1：编写测试**
+
+覆盖：对象创建及属性检查（container/supporter/scenery/static/wearable/edible/readable）、takeable-p 判定（scenery 不可取、supporter 不可取、static 不可取）、容器状态机转换（open→close→lock→unlock→open）、accessible-p 判定（open 容器可访问内容、closed/locked 不可访问）、find-parent（在房间/背包中找父容器）、effects 解析（永久 vs 临时 duration）。
+
+- [ ] **步骤 2：运行测试确认失败**
+
+- [ ] **步骤 3：实现 tg-object.el**
+
+覆盖 `cl-defstruct tg-object`（移除前向声明），核心谓词 `tg-object-takeable-p`（非 scenery/supporter/static）、`tg-object-container-p`、`tg-object-supporter-p`、`tg-object-open-p`、`tg-object-locked-p`、`tg-object-wearable-p`、`tg-object-accessible-p`（可见 + 非容器内 或 容器状态为 open 或 在 supporter 上），容器状态机：`tg-object-set-state` 遵循 `open↔closed↔locked`、`tg-object-can-open-p`、`tg-object-can-close-p`，查找函数 `tg-object-find-parent`、`tg-object-find-in-room`（接收 room 参数而非 game）、`tg-object-find-in-inventory`（接收 inventory 列表参数而非 game），移动 `tg-object-move`。
+
+- [ ] **步骤 4：运行测试确认通过**
+
+- [ ] **步骤 5：Commit**
+
+### 任务 3：tg-creature.el — 生物系统
+
+**依赖：** 任务 1, 任务 2
+**文件集：** `tg-creature.el`, `test/tg-creature-test.el`
+**导出/变更接口：** `tg-creature.el::tg-creature-symbol`, `tg-creature.el::tg-creature-name`, `tg-creature.el::tg-creature-attr`, `tg-creature.el::tg-creature-inventory`, `tg-creature.el::tg-creature-equipment`, `tg-creature.el::tg-creature-exp-reward`, `tg-creature.el::tg-creature-behaviors`, `tg-creature.el::tg-creature-death-trigger`, `tg-creature.el::tg-creature-shopkeeper`, `tg-creature.el::tg-creature-handler`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-attr-get`, `tg-creature.el::tg-creature-effective-attr`
+**消费接口：** `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-creature`
+**复杂度：** standard
+
+- [ ] **步骤 1：编写测试**
+
+覆盖：creature 创建（attr 初始值）、attr-get（按键值查找）、dead-p（hp≤0）、take-effect（写入/修改 attr、支持新属性、hp 不低于 0）、add/remove/has-item、effective-attr（基础 attr + equipment 遍历叠加 effects（需 tg-object-effects）+ active-buffs 参数叠加，由调用方传入）。
+
+- [ ] **步骤 2：运行测试确认失败**
+
+- [ ] **步骤 3：实现 tg-creature.el**
+
+覆盖 `cl-defstruct tg-creature`，`tg-creature-attr-get`（从 attr alist 中按 key 查值）、`tg-creature-dead-p`（hp ≤ 0）、`tg-creature-take-effect`（attr alist 操作，有则改、无则 push，hp 不低于 0）、`tg-creature-add-item`/`tg-creature-remove-item`/`tg-creature-has-item`、`tg-creature-effective-attr`（接收 creature、attr-key、active-buffs 三个参数；遍历 equipment，通过 `tg-get-object` + `tg-object-effects` 动态叠加，再加上 active-buffs 叠加）。
+
+- [ ] **步骤 4：运行测试确认通过**
+
+- [ ] **步骤 5：Commit**
+
+### 任务 4：tg-game.el — 游戏动态状态
+
+**依赖：** 任务 1, 任务 3
 **文件集：** `tg-game.el`, `test/tg-game-test.el`
 **导出/变更接口：** `tg-game.el::tg-game`, `tg-game.el::tg-new-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-game.el::tg-game-incf`, `tg-game.el::tg-player`, `tg-game.el::tg-buffs-tick`, `tg-game.el::tg-buffs-apply`
-**消费接口：** 无
+**消费接口：** `tg-registry.el::tg-get-creature`, `tg-creature.el::tg-creature-take-effect`
 **复杂度：** quick
 
 **文件：**
@@ -212,7 +260,7 @@
             (tg-game-put game :active-buffs
                          (cons (cons attr (list :delta delta :remaining duration :duration duration))
                                (tg-game-get game :active-buffs)))
-          ;; 永久效果写法用 tg-creature-take-effect（Task 5 定义）
+          ;; 永久效果写法用 tg-creature-take-effect（Task 3 定义）
           (tg-creature-take-effect player (cons attr delta)))))))
 
 (provide 'tg-game)
@@ -225,9 +273,9 @@
 
 - [ ] **步骤 5：Commit**
 
-### 任务 3：tg-room.el — 房间与地图
+### 任务 5：tg-room.el — 房间与地图
 
-**依赖：** 任务 1
+**依赖：** 任务 1, 任务 2
 **文件集：** `tg-room.el`, `test/tg-room-test.el`
 **导出/变更接口：** `tg-room.el::tg-room-symbol`, `tg-room.el::tg-room-name`, `tg-room.el::tg-room-desc`, `tg-room.el::tg-room-exits`, `tg-room.el::tg-room-contents`, `tg-room.el::tg-room-creatures`, `tg-room.el::tg-room-before-handler`, `tg-room.el::tg-room-after-handler`, `tg-room.el::tg-room-visit-count`, `tg-room.el::tg-room-visit`, `tg-room.el::tg-room-exit`, `tg-room.el::tg-room-all-visible-objects`, `tg-room.el::tg-room-describe`, `tg-room.el::tg-room-add-object`, `tg-room.el::tg-room-remove-object`, `tg-room.el::tg-room-add-creature`, `tg-room.el::tg-room-remove-creature`, `tg-room.el::tg-directions`
 **消费接口：** `tg-registry.el::tg-get-room`, `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-room`
@@ -292,54 +340,6 @@
 
 - [ ] **步骤 5：Commit**
 
-### 任务 4：tg-object.el — 对象属性系统
-
-**依赖：** 任务 1
-**文件集：** `tg-object.el`, `test/tg-object-test.el`
-**导出/变更接口：** `tg-object.el::tg-object-symbol`, `tg-object.el::tg-object-name`, `tg-object.el::tg-object-synonyms`, `tg-object.el::tg-object-contents`, `tg-object.el::tg-object-supports`, `tg-object.el::tg-object-props`, `tg-object.el::tg-object-state`, `tg-object.el::tg-object-key`, `tg-object.el::tg-object-effects`, `tg-object.el::tg-object-handler`, `tg-object.el::tg-object-takeable-p`, `tg-object.el::tg-object-container-p`, `tg-object.el::tg-object-supporter-p`, `tg-object.el::tg-object-open-p`, `tg-object.el::tg-object-locked-p`, `tg-object.el::tg-object-wearable-p`, `tg-object.el::tg-object-accessible-p`, `tg-object.el::tg-object-find`, `tg-object.el::tg-object-find-parent`, `tg-object.el::tg-object-find-in-room`, `tg-object.el::tg-object-find-in-inventory`, `tg-object.el::tg-object-move`
-**消费接口：** `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-object`, `tg-registry.el::tg--objects`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`
-**复杂度：** deep
-
-**文件：**
-- 创建：`tg-object.el`
-- 创建：`test/tg-object-test.el`
-
-- [ ] **步骤 1：编写测试**
-
-覆盖：对象创建及属性检查（container/supporter/scenery/static/wearable/edible/readable）、takeable-p 判定（scenery 不可取、supporter 不可取、static 不可取）、容器状态机转换（open→close→lock→unlock→open）、accessible-p 判定（open 容器可访问内容、closed/locked 不可访问）、find-parent（在房间/背包中找父容器）、effects 解析（永久 vs 临时 duration）。
-
-- [ ] **步骤 2：运行测试确认失败**
-
-- [ ] **步骤 3：实现 tg-object.el**
-
-覆盖 `cl-defstruct tg-object`（移除前向声明），核心谓词 `tg-object-takeable-p`（非 scenery/supporter/static）、`tg-object-container-p`、`tg-object-supporter-p`、`tg-object-open-p`、`tg-object-locked-p`、`tg-object-wearable-p`、`tg-object-accessible-p`（可见 + 非容器内 或 容器状态为 open 或 在 supporter 上），容器状态机：`tg-object-set-state` 遵循 `open↔closed↔locked`、`tg-object-can-open-p`、`tg-object-can-close-p`，查找函数 `tg-object-find-parent`、`tg-object-find-in-room`、`tg-object-find-in-inventory`，移动 `tg-object-move`。
-
-- [ ] **步骤 4：运行测试确认通过**
-
-- [ ] **步骤 5：Commit**
-
-### 任务 5：tg-creature.el — 生物系统
-
-**依赖：** 任务 1, 任务 4
-**文件集：** `tg-creature.el`, `test/tg-creature-test.el`
-**导出/变更接口：** `tg-creature.el::tg-creature-symbol`, `tg-creature.el::tg-creature-name`, `tg-creature.el::tg-creature-attr`, `tg-creature.el::tg-creature-inventory`, `tg-creature.el::tg-creature-equipment`, `tg-creature.el::tg-creature-exp-reward`, `tg-creature.el::tg-creature-behaviors`, `tg-creature.el::tg-creature-death-trigger`, `tg-creature.el::tg-creature-shopkeeper`, `tg-creature.el::tg-creature-handler`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-effective-attr`
-**消费接口：** `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-creature`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-player`
-**复杂度：** standard
-
-- [ ] **步骤 1：编写测试**
-
-覆盖：creature 创建（attr 初始值）、dead-p（hp≤0）、take-effect（写入/修改 attr、支持新属性、hp 不低于 0）、add/remove/has-item、effective-attr（基础 attr + equipment 遍历叠加 effects（需 tg-object-effects）+ active-buffs 叠加）。
-
-- [ ] **步骤 2：运行测试确认失败**
-
-- [ ] **步骤 3：实现 tg-creature.el**
-
-覆盖 `cl-defstruct tg-creature`，`tg-creature-dead-p`（hp ≤ 0）、`tg-creature-take-effect`（attr alist 操作，有则改、无则 push，hp 不低于 0）、`tg-creature-add-item`/`tg-creature-remove-item`/`tg-creature-has-item`、`tg-creature-effective-attr`（遍历 equipment，通过 `tg-get-object` + `tg-object-effects` 动态叠加，再加上 active-buffs 叠加）。
-
-- [ ] **步骤 4：运行测试确认通过**
-
-- [ ] **步骤 5：Commit**
-
 ### 任务 6：tg-action.el — 动词注册
 
 **依赖：** 任务 1
@@ -364,10 +364,10 @@
 
 ### 任务 7：tg-parser.el — PEG 自然语言解析
 
-**依赖：** 任务 1, 任务 2, 任务 6
+**依赖：** 任务 1, 任务 4, 任务 5, 任务 6
 **文件集：** `tg-parser.el`, `test/tg-parser-test.el`
 **导出/变更接口：** `tg-parser.el::tg-parse`, `tg-parser.el::tg-grammar`, `tg-parser.el::tg-build-vocabulary`
-**消费接口：** `tg-registry.el::tg-get-room`, `tg-registry.el::tg-get-object`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game`, `tg-action.el::tg-verb-aliases`, `tg-action.el::tg-find-action`
+**消费接口：** `tg-registry.el::tg-get-room`, `tg-registry.el::tg-get-object`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game`, `tg-action.el::tg-verb-aliases`, `tg-action.el::tg-find-action`, `tg-room.el::tg-room-all-visible-objects`
 **复杂度：** deep
 
 - [ ] **步骤 1：编写测试**
@@ -407,7 +407,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 8：tg-commands.el — Handler Chain 调度引擎
 
-**依赖：** 任务 1, 任务 2, 任务 3, 任务 4, 任务 5, 任务 6, 任务 7
+**依赖：** 任务 1, 任务 4, 任务 5, 任务 2, 任务 3, 任务 6, 任务 7
 **文件集：** `tg-commands.el`, `test/tg-commands-test.el`
 **导出/变更接口：** `tg-commands.el::tg-dispatch`, `tg-commands.el::tg-message`
 **消费接口：** `tg-parser.el::tg-parse`, `tg-action.el::tg-find-action`, `tg-action.el::tg-passive-actions`, `tg-room.el::tg-room-before-handler`, `tg-room.el::tg-room-after-handler`, `tg-object.el::tg-object-handler`, `tg-creature.el::tg-creature-handler`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-incf`, `tg-game.el::tg-game`
@@ -415,7 +415,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 - [ ] **步骤 1：编写测试**
 
-覆盖：handler chain 顺序（error→before→io→do→action→after）、before-handler 返回 t 则停止（不执行后续 handler 也不执行 after）、io-handler 返回 t 则停止、do-handler 返回 t 则停止、action handler 执行后 after-handler 始终执行、被动命令不触发 NPC 行为不计回合、`take all` 展开（收集所有 takeable 对象逐个 dispatch）。
+覆盖：handler chain 顺序（error→before→io→do→action→after）、before-handler 返回 t 则停止（不执行后续 handler 也不执行 after）、io-handler 返回 t 则停止、do-handler 返回 t 则停止、action handler 成功执行后 after-handler 才执行（action 抛 tg-action-abort 则跳过 after）、被动命令不触发 NPC 行为不计回合、`take all` 展开（收集所有 takeable 对象逐个 dispatch）。
 
 - [ ] **步骤 2：运行测试确认失败**
 
@@ -429,8 +429,9 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
    ((tg-run-io-handler ast game) nil)
    ((tg-run-do-handler ast game) nil)
    (t
-    (tg-run-action ast game)
-    (tg-run-room-after ast game)))
+    (catch 'tg-action-abort
+      (tg-run-action ast game)
+      (tg-run-room-after ast game))))
   (unless (member (plist-get ast :action) tg-passive-actions)
     (tg-npc-run-behaviors game)
     (tg-buffs-tick game)
@@ -450,7 +451,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 **依赖：** 任务 8
 **文件集：** `tg-action.el`（追加）
 **导出/变更接口：** `tg-action.el::tg-action--handler-go`, `tg-action.el::tg-action--handler-look`, `tg-action.el::tg-action--handler-examine`, `tg-action.el::tg-action--handler-take`, `tg-action.el::tg-action--handler-drop`, `tg-action.el::tg-action--handler-place`, `tg-action.el::tg-action--handler-open`, `tg-action.el::tg-action--handler-close`, `tg-action.el::tg-action--handler-unlock`, `tg-action.el::tg-action--handler-wear`, `tg-action.el::tg-action--handler-eat`, `tg-action.el::tg-action--handler-read`, `tg-action.el::tg-action--handler-inventory`, `tg-action.el::tg-action--handler-attack`, `tg-action.el::tg-action--handler-talk`, `tg-action.el::tg-action--handler-buy`, `tg-action.el::tg-action--handler-sell`, `tg-action.el::tg-action--handler-shop`, `tg-action.el::tg-action--handler-status`, `tg-action.el::tg-action--handler-upgrade`, `tg-action.el::tg-action--handler-quests`, `tg-action.el::tg-action--handler-quest`, `tg-action.el::tg-action--handler-accept`, `tg-action.el::tg-action--handler-save`, `tg-action.el::tg-action--handler-load`, `tg-action.el::tg-action--handler-help`, `tg-action.el::tg-action--handler-quit`, `tg-action.el::tg-register-builtins`
-**消费接口：** `tg-action.el::tg-register-action`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-player`, `tg-room.el::tg-room-exit`, `tg-room.el::tg-get-room`, `tg-room.el::tg-room-all-visible-objects`, `tg-room.el::tg-room-contents`, `tg-object.el::tg-object-takeable-p`, `tg-object.el::tg-object-accessible-p`, `tg-object.el::tg-object-open-p`, `tg-object.el::tg-object-locked-p`, `tg-object.el::tg-object-move`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-effective-attr`
+**消费接口：** `tg-action.el::tg-register-action`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-game.el::tg-player`, `tg-room.el::tg-room-exit`, `tg-registry.el::tg-get-room`, `tg-room.el::tg-room-all-visible-objects`, `tg-room.el::tg-room-contents`, `tg-object.el::tg-object-takeable-p`, `tg-object.el::tg-object-accessible-p`, `tg-object.el::tg-object-open-p`, `tg-object.el::tg-object-locked-p`, `tg-object.el::tg-object-move`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-attr-get`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-effective-attr`
 **复杂度：** deep
 
 - [ ] **步骤 1：编写测试**
@@ -487,11 +488,11 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
               (tg-action--handler-take `(:action take :do-key ,sym) game)))
           t)
       ;; 单个对象 take
-      (let ((obj (tg-object-find-in-room do-key game)))
+      (let* ((room (tg-get-room (tg-game-get game :location)))
+             (obj (tg-object-find-in-room do-key room)))
         (if obj
             (if (tg-object-takeable-p obj)
-                (let ((room (tg-get-room (tg-game-get game :location)))
-                      (player (tg-player)))
+                (let ((player (tg-player)))
                   (setf (tg-room-contents room) (remove do-key (tg-room-contents room)))
                   (tg-creature-add-item player do-key)
                   (tg-message (format "拾取了%s。" (tg-object-name obj)))
@@ -510,8 +511,8 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
          (npc (tg-get-creature target)))
     (unless (member target (tg-room-creatures room))
       (tg-message "这里没有可以攻击的目标。")
-      (throw 'exception nil))
-    (let* ((p-attack (or (tg-creature-effective-attr player 'attack game) 0))
+      (throw 'tg-action-abort nil))
+    (let* ((p-attack (or (tg-creature-effective-attr player 'attack (tg-game-get game :active-buffs)) 0))
            (n-defense (or (tg-creature-attr-get npc 'defense) 0))
            (damage (max 1 (- p-attack n-defense))))
       (tg-creature-take-effect npc (cons 'hp (- damage)))
@@ -533,10 +534,10 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
                            (* 10 (or (tg-creature-attr-get npc 'level) 1)))))
               (tg-creature-take-effect player (cons 'exp exp))
               (tg-message (format "%s被击败了！获得%d经验。" (tg-creature-name npc) exp)))
-            (tg-track-quest 'kill target)
+            (tg-track-quest 'kill target))
         ;; 反击
         (let* ((n-attack (or (tg-creature-attr-get npc 'attack) 0))
-               (p-defense (or (tg-creature-effective-attr player 'defense game) 0))
+               (p-defense (or (tg-creature-effective-attr player 'defense (tg-game-get game :active-buffs)) 0))
                (counter (max 1 (- n-attack p-defense))))
           (tg-creature-take-effect player (cons 'hp (- counter)))
           (tg-message (format "%s反击造成%d点伤害。" (tg-creature-name npc) counter))
@@ -552,7 +553,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 10：tg-dialog.el — 状态机对话
 
-**依赖：** 任务 1, 任务 5
+**依赖：** 任务 1, 任务 3, 任务 4
 **文件集：** `tg-dialog.el`, `test/tg-dialog-test.el`
 **导出/变更接口：** `tg-dialog.el::tg-dialog-state-node-id`, `tg-dialog.el::tg-dialog-state-npc-symbol`, `tg-dialog.el::tg-dialog-state-greeting`, `tg-dialog.el::tg-dialog-state-options`, `tg-dialog.el::tg-dialog-option-text`, `tg-dialog.el::tg-dialog-option-response`, `tg-dialog.el::tg-dialog-option-condition`, `tg-dialog.el::tg-dialog-option-effects`, `tg-dialog.el::tg-dialog-option-next-node`, `tg-dialog.el::tg-dialog-pending`, `tg-dialog.el::tg-dialog-start`, `tg-dialog.el::tg-dialog-handle-choice`, `tg-dialog.el::tg-dialog-eval-condition`, `tg-dialog.el::tg-dialog-apply-effects`
 **消费接口：** `tg-registry.el::tg-get-dialog`, `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-get-quest`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-take-effect`, `tg-game.el::tg-player`
@@ -574,7 +575,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 11：tg-npc.el — NPC 行为引擎
 
-**依赖：** 任务 1, 任务 3, 任务 5
+**依赖：** 任务 1, 任务 3, 任务 4, 任务 5
 **文件集：** `tg-npc.el`, `test/tg-npc-test.el`
 **导出/变更接口：** `tg-npc.el::tg-npc-run-behaviors`, `tg-npc.el::tg-npc-eval-condition`, `tg-npc.el::tg-npc-execute-action`
 **消费接口：** `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-get-room`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-behaviors`, `tg-creature.el::tg-creature-attr`, `tg-room.el::tg-room-creatures`, `tg-room.el::tg-room-exit`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game`, `tg-game.el::tg-player`
@@ -596,7 +597,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 12：tg-quest.el — 任务系统
 
-**依赖：** 任务 1, 任务 5
+**依赖：** 任务 1, 任务 3, 任务 4
 **文件集：** `tg-quest.el`, `test/tg-quest-test.el`
 **导出/变更接口：** `tg-quest.el::tg-quest-symbol`, `tg-quest.el::tg-quest-type`, `tg-quest.el::tg-quest-target`, `tg-quest.el::tg-quest-count`, `tg-quest.el::tg-quest-progress`, `tg-quest.el::tg-quest-status`, `tg-quest.el::tg-quest-rewards`, `tg-quest.el::tg-track-quest`, `tg-quest.el::tg-quest-activate`
 **消费接口：** `tg-registry.el::tg-get-quest`, `tg-registry.el::tg--quests`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-game.el::tg-player`
@@ -618,7 +619,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 13：tg-shop.el — 商店
 
-**依赖：** 任务 1, 任务 5
+**依赖：** 任务 1, 任务 3, 任务 4
 **文件集：** `tg-shop.el`, `test/tg-shop-test.el`
 **导出/变更接口：** `tg-shop.el::tg-shop-npc-symbol`, `tg-shop.el::tg-shop-sell-rate`, `tg-shop.el::tg-shop-goods`, `tg-shop.el::tg-shop-buy`, `tg-shop.el::tg-shop-sell`
 **消费接口：** `tg-registry.el::tg-get-shop`, `tg-registry.el::tg-get-object`, `tg-creature.el::tg-creature-attr-get`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-game.el::tg-player`
@@ -691,7 +692,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 14：tg-level.el — 经验等级
 
-**依赖：** 任务 5
+**依赖：** 任务 3, 任务 4
 **文件集：** `tg-level.el`, `test/tg-level-test.el`
 **导出/变更接口：** `tg-level.el::tg-level-exp-table`, `tg-level.el::tg-level-bonus-points-per-level`, `tg-level.el::tg-level-auto-upgrade-attrs`, `tg-level.el::tg-level-check`, `tg-level.el::tg-level-upgrade`
 **消费接口：** `tg-creature.el::tg-creature-attr`, `tg-creature.el::tg-creature-take-effect`, `tg-game.el::tg-player`
@@ -747,8 +748,8 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
       (tg-creature-take-effect creature (cons 'level 1))
       (tg-creature-take-effect creature (cons 'bonus-points tg-level-bonus-points-per-level))
       (dolist (upgrade tg-level-auto-upgrade-attrs)
-        (tg-creature-take-effect creature upgrade))
-      (setf (tg-creature-attr-get creature 'level) level))))
+        (tg-creature-take-effect creature upgrade)))))
+
 ```
 
 - [ ] **步骤 4：运行测试确认通过**
@@ -757,7 +758,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 15：tg-config.el — Org 配置解析
 
-**依赖：** 任务 1, 任务 2, 任务 3, 任务 4, 任务 5, 任务 10, 任务 12, 任务 13, 任务 14
+**依赖：** 任务 1, 任务 4, 任务 5, 任务 2, 任务 3, 任务 10, 任务 12, 任务 13, 任务 14
 **文件集：** `tg-config.el`, `test/tg-config-test.el`
 **导出/变更接口：** `tg-config.el::tg-config-load`
 **消费接口：** `tg-registry.el::tg-register-room`, `tg-registry.el::tg-register-object`, `tg-registry.el::tg-register-creature`, `tg-registry.el::tg-register-dialog`, `tg-registry.el::tg-register-shop`, `tg-registry.el::tg-register-quest`, `tg-game.el::tg-new-game`, `tg-room.el::make-tg-room`, `tg-object.el::make-tg-object`, `tg-creature.el::make-tg-creature`, `tg-dialog.el::make-tg-dialog-state`, `tg-dialog.el::make-tg-dialog-option`
@@ -779,7 +780,7 @@ PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look
 
 ### 任务 16：tg-save.el — 存档
 
-**依赖：** 任务 1, 任务 2, 任务 3, 任务 4, 任务 5, 任务 12, 任务 13, 任务 15
+**依赖：** 任务 1, 任务 4, 任务 5, 任务 2, 任务 3, 任务 12, 任务 13, 任务 15
 **文件集：** `tg-save.el`, `test/tg-save-test.el`
 **导出/变更接口：** `tg-save.el::tg-save-game`, `tg-save.el::tg-load-game`
 **消费接口：** `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-game.el::tg-new-game`, `tg-registry.el::tg--rooms`, `tg-registry.el::tg--objects`, `tg-registry.el::tg--creatures`, `tg-registry.el::tg--quests`, `tg-registry.el::tg--shops`, `tg-config.el::tg-config-load`
@@ -990,21 +991,19 @@ rm test/test-action.el test/test-creature-maker.el test/test-dialog-system.el \
 
 > 仅 `parallel-executing-plans` 使用；`serial-executing-plans` 忽略本节。
 
-**Critical Path:** 任务 1 → 任务 4 → 任务 5 → 任务 2 → 任务 7 → 任务 8 → 任务 9 → 任务 15 → 任务 16 → 任务 18 → 任务 19 → 任务 20
+**Critical Path:** 任务 1 → 任务 2 → 任务 3 → 任务 4 → 任务 7 → 任务 8 → 任务 9 → 任务 15 → 任务 16 → 任务 18 → 任务 19 → 任务 20
 
-依赖链说明：registry(1) → object(4) → creature(5, 需要 object 做 effective-attr) → game(2, 需要 creature 做 buffs-apply) → parser(7, 需要 game+action) → commands(8) → builtins(9) → config(15) → save(16) → mode(18) → integration(19) → cleanup(20)
+依赖链说明：registry(1) → object(2) → creature(3, 需要 object 做 effective-attr) → game(4, 需要 creature 做 buffs-apply) → room(5) → parser(7, 需要 game+action+room) → commands(8) → builtins(9) → config(15) → save(16) → mode(18) → integration(19) → cleanup(20)
 
 - Wave 1（无依赖）：任务 1
-- Wave 2（依赖 Wave 1）：任务 3（依赖 1）, 任务 4（依赖 1）, 任务 6（依赖 1）
-- Wave 3（依赖 Wave 2）：任务 5（依赖 1, 4）
-- Wave 4（依赖 Wave 3）：任务 2（依赖 1, 5）
-- Wave 5（依赖 Wave 4）：任务 7（依赖 1, 2, 6）
-- Wave 6（依赖 Wave 2-5）：任务 8（依赖 1, 2, 3, 4, 5, 6, 7）
+- Wave 2（依赖 Wave 1）：任务 2（依赖 1）, 任务 6（依赖 1）
+- Wave 3（依赖 Wave 2）：任务 3（依赖 1, 2）, 任务 5（依赖 1, 2）
+- Wave 4（依赖 Wave 3）：任务 4（依赖 1, 3）
+- Wave 5（依赖 Wave 4）：任务 7（依赖 1, 4, 5, 6）, 任务 10（依赖 1, 3, 4）, 任务 11（依赖 1, 3, 4, 5）, 任务 12（依赖 1, 3, 4）, 任务 13（依赖 1, 3, 4）, 任务 14（依赖 3, 4）
+- Wave 6（依赖 Wave 5）：任务 8（依赖 1, 2, 3, 4, 5, 6, 7）, 任务 15（依赖 1, 2, 3, 4, 5, 10, 12, 13, 14）
 - Wave 7（依赖 Wave 6）：任务 9（依赖 8）
-- Wave 8（依赖 Wave 3+6，与 Wave 7 并行）：任务 10（依赖 1, 5）, 任务 11（依赖 1, 3, 5）, 任务 12（依赖 1, 5）, 任务 13（依赖 1, 5）, 任务 14（依赖 5）
-- Wave 9（依赖 Wave 7+8）：任务 15（依赖 1, 2, 3, 4, 5, 10, 12, 13, 14）
-- Wave 10（依赖 Wave 9）：任务 16（依赖 1, 2, 3, 4, 5, 12, 13, 15）, 任务 17（依赖 15）
-- Wave 11（依赖 Wave 10）：任务 18（依赖 7, 8, 10, 15, 16）
-- Wave 12（依赖 Wave 11+所有前序）：任务 19（依赖 1-18）
-- Wave 13（依赖 Wave 12）：任务 20（依赖 19）
-- Wave FINAL（所有任务完成后）：F1 规格合规、F2 代码质量、F3 集成测试验证、F4 范围保真
+- Wave 8（依赖 Wave 6）：任务 16（依赖 1, 2, 3, 4, 5, 12, 13, 15）, 任务 17（依赖 15）
+- Wave 9（依赖 Wave 7+8）：任务 18（依赖 7, 8, 10, 15, 16）
+- Wave 10（依赖 Wave 9）：任务 19（依赖 1-18）
+- Wave 11（依赖 Wave 10）：任务 20（依赖 19）
+- Wave FINAL（所有任务完成后）：F1 规格合规、F2 代码质量、F3 真实手测、F4 范围保真
