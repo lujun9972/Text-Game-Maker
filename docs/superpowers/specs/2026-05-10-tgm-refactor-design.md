@@ -254,9 +254,10 @@ tg.el       ← 入口，require 全部
   props           ;; 属性集合 (container supporter scenery static wearable edible readable)
   state           ;; 容器开闭状态: open / closed / locked / nil（非容器为 nil）
   key             ;; 解锁所需钥匙的 object symbol（nil 表示无需钥匙/任何方式可开）
-  effects         ;; 效果列表 ((hp . 20) (attack . 3 :duration 10) ...)
-                  ;; - 无 :duration: 永久生效（wearable 动态叠加，edible 吃下后永久写 attr）
-                  ;; - 有 :duration N: 临时效果（吃下后 N 回合有效），存入 :active-buffs
+  effects         ;; 效果列表 ((hp 20) (attack 3 :duration 10) ...)
+                  ;; - 每个效果是 proper list: (attr value) 或 (attr value :duration N)
+                  ;; - (attr value): 永久生效（wearable 动态叠加，edible 吃下后永久写 attr）
+                  ;; - (attr value :duration N): 临时效果（N 回合有效），存入 game :active-buffs
                   ;; - non-wearable/non-edible 对象忽略此字段
   handler)        ;; (lambda (ast game) => t/nil)
 ```
@@ -270,7 +271,7 @@ tg.el       ← 入口，require 全部
 | `scenery` | 背景装饰：不可取、不出现在物品列表描述中、但进入词汇表 |
 | `static` | 不可移动（不能 take），但出现在描述中 |
 | `wearable` | 可装备（`wear` 动词可用），装备效果通过 `effects` 字段定义，combat 时动态叠加到玩家 attr |
-| `edible` | 可食用（`eat` 动词可用）。食用后物品消耗。永久 effects（无 `:duration`）写入 attr；临时 effects（带 `:duration N`）添加到 `:active-buffs`，N 回合后自动撤销 |
+| `edible` | 可食用（`eat` 动词可用）。食用后物品消耗。永久 effects（`(hp 20)`）写入 attr；临时 effects（`(attack 3 :duration 10)`）添加到 `:active-buffs`，N 回合后自动撤销 |
 | `readable` | 可阅读（`read` 动词可用） |
 
 ### 容器状态机
@@ -529,7 +530,7 @@ attr 是一个 alist，游戏作者可自由定义属性名。约定属性：
 
 ```elisp
 (defun tg-buffs-tick (game)
-  "回合结束时递减所有临时效果的剩余回合。"
+  "回合结束时递减所有临时效果的剩余回合，移除过期效果。"
   (let ((buffs (tg-game-get game :active-buffs)))
     (dolist (buff buffs)
       (cl-decf (plist-get (cdr buff) :remaining)))
@@ -538,14 +539,18 @@ attr 是一个 alist，游戏作者可自由定义属性名。约定属性：
                                buffs))))
 
 (defun tg-buffs-apply (game effects)
-  "应用效果到 buff 列表。永久效果直接写 attr，临时效果进入 :active-buffs。"
+  "应用效果。永久效果直接写 player attr，临时效果进入 :active-buffs。"
   (dolist (eff effects)
-    (if-let ((duration (plist-get (cdr eff) :duration)))
-        (push (cons (car eff)
-                    (list :delta (cdr eff) :remaining duration :duration duration))
-              (tg-game-get game :active-buffs))
-      ;; 永久效果：直接写入 player attr
-      (tg-creature-take-effect (tg-player game) (cons (car eff) (cadr eff))))))
+    (let ((attr (car eff))
+          (delta (cadr eff))
+          (duration (plist-get (cddr eff) :duration)))
+      (if duration
+          ;; 临时效果：加入 active-buffs
+          (tg-game-put game :active-buffs
+                       (cons (cons attr (list :delta delta :remaining duration :duration duration))
+                             (tg-game-get game :active-buffs)))
+        ;; 永久效果：直接写入 player attr
+        (tg-creature-take-effect (tg-player game) (cons attr delta))))))
 ```
 
 ## 对话状态机（tg-dialog.el）
@@ -779,10 +784,12 @@ talk <npc-name>
     (puthash :turns     0 g)
     (puthash :location  nil g)         ;; 当前房间 symbol
     (puthash :player    nil g)         ;; 玩家 creature symbol
-    (puthash :inventory nil g)         ;; 玩家物品列表（symbol list）
-    (puthash :equipment nil g)         ;; 玩家装备列表（symbol list）
-    (puthash :active-buffs nil g)      ;; 活跃临时效果 (((hp . 20) :remaining 3) ...)
+    (puthash :active-buffs nil g)      ;; 活跃临时效果 ((attr . (:delta N :remaining R :duration D)) ...)
     g))
+
+;; 玩家的 inventory/equipment 统一通过 Creature 访问，不在此重复存储：
+;; (tg-creature-inventory (tg-player game))  — 玩家物品
+;; (tg-creature-equipment (tg-player game))  — 玩家装备
 
 (defun tg-game-get (game key)     (gethash key game))
 (defun tg-game-put (game key val) (puthash key val game))
@@ -804,10 +811,8 @@ talk <npc-name>
  (:location . courtyard)
  (:state . in-progress)
  (:player . player-symbol)
- (:player-attr . ((hp . 80) (attack . 12) (defense . 5) (exp . 350) ...))
- (:player-inventory . (sword potion))
- (:player-equipment . (helmet))
- (:active-buffs . (((attack . 3) :remaining 5) ((hp . 20) :remaining 0)))
+ ;; 玩家 inventory/equipment 随 creatures 一起序列化，不单独列出
+ (:active-buffs . ((attack . (:delta 3 :remaining 5 :duration 10))))
  (:rooms . ((courtyard (visit-count . 3) (contents torch key))
             (hall (visit-count . 1) (creatures goblin))))
  (:objects . ((chest (:state . open) (:contents . (diamond)))
