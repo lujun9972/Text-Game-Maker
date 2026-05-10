@@ -1,0 +1,35 @@
+;; test/tg-registry-test.el -*- lexical-binding: t; -*-
+(require 'ert)
+(require 'tg-registry)
+
+(ert-deftest test-tg-registry-register-and-get ()
+  (tg-registry-clear)
+  ;; 使用 cons cell 代替 struct（struct 由各模块定义）
+  (tg-register-room 'courtyard '(room . "庭院"))
+  (tg-register-object 'key '(object . "钥匙"))
+  (tg-register-creature 'goblin '(creature . "哥布林"))
+  (should (equal (tg-get-room 'courtyard) '(room . "庭院")))
+  (should (null (tg-get-room 'nonexistent)))
+  (should (equal (tg-get-object 'key) '(object . "钥匙")))
+  (should (equal (tg-get-creature 'goblin) '(creature . "哥布林")))
+  ;; dialogs/shops/quests/actions 同样工作
+  (tg-register-dialog 'greet '(dialog . "问候"))
+  (tg-register-shop 'shop1 '(shop . "商店"))
+  (tg-register-quest 'main '(quest . "主线"))
+  (tg-register-action 'take '(action . "拿取"))
+  (should (equal (tg-get-dialog 'greet) '(dialog . "问候")))
+  (should (equal (tg-get-shop 'shop1) '(shop . "商店")))
+  (should (equal (tg-get-quest 'main) '(quest . "主线")))
+  (should (equal (tg-get-action 'take) '(action . "拿取"))))
+
+(ert-deftest test-tg-registry-clear ()
+  (tg-registry-clear)
+  (tg-register-room 'r1 '(room))
+  (tg-registry-clear)
+  (should (null (tg-get-room 'r1))))
+
+(ert-deftest test-tg-registry-action-words ()
+  (tg-registry-clear)
+  (puthash "take" 'take tg--action-words)
+  (should (eq (gethash "take" tg--action-words) 'take))
+  (should (null (gethash "nonexistent" tg--action-words))))
