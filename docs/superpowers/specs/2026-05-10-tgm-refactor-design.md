@@ -501,19 +501,23 @@ attr 是一个 alist，游戏作者可自由定义属性名。约定属性：
 
 ```
 1. 验证目标在当前房间
-2. 计算伤害: max(1, player.attack - target.defense)
-3. 施加伤害
-4. 若目标死亡:
+2. 计算有效攻击力: player.attack + sum(equipment effects.attack) + sum(active buffs)
+3. 计算有效防御力: player.defense + sum(equipment effects.defense)
+4. 伤害 = max(1, effective_attack - target.defense)
+5. 施加伤害
+6. 若目标死亡:
    - 从房间移除
    - 触发 death-trigger
    - 发放 exp 奖励
-   - 更新 kill 类任务
-5. 若目标存活:
-   - 敌人反击: max(1, target.attack - player.defense)
+   - 调用 (tg-track-quest 'kill target-creature-symbol) 更新 kill 类任务
+7. 若目标存活:
+   - 敌人反击: max(1, target.attack - player_effective_defense)
    - 施加反击伤害
    - 若玩家死亡 → 游戏结束
    - 否则显示双方 HP
 ```
+
+装备加成采用动态计算：attr 存储基础值，每次 combat 遍历 equipment 列表叠加 effects（含装备和 buff）。卸下装备/移除 buff 后自动恢复，无需反向计算原始值。
 
 ## 对话状态机（tg-dialog.el）
 
@@ -547,6 +551,39 @@ talk <npc-name>
   → 显示 response，执行 effects
   → next-node 非 nil → 跳转到新 state，显示新 greeting + 选项
   → next-node 为 nil → 结束对话，清除 pending 状态
+```
+
+### 内联 DSL 解析
+
+对话选项使用内联 DSL，格式为：
+
+```
+- <text> :: <response> → <effects> → <next-node>
+```
+
+解析规则：
+- `- ` 开头标记一个选项
+- ` :: ` 分隔选项文字和 NPC 回应
+- ` → ` 分隔回应、effects 和下一节点（两个 `→`）
+- `<effects>` 是 S-expression list：`((quest-activate . find-dragon-scale))` 或 `nil`
+- `<next-node>` 是 node-id symbol 或 `nil`
+
+```elisp
+(defun tg-config-parse-dialog-option (org-body)
+  "从 Org body 文本解析 dialog option 列表。"
+  (let ((lines (split-string org-body "\n" t))
+        (options nil))
+    (dolist (line lines)
+      (when (string-match "^- \\([^:]+\\) :: \\([^→]+\\) → \\([^→]+\\) → \\(.+\\)$" line)
+        (let ((text (string-trim (match-string 1 line)))
+              (response (string-trim (match-string 2 line)))
+              (effects (read (match-string 3 line)))
+              (next-node (read (match-string 4 line))))
+          (push (make-tg-dialog-option
+                 :text text :response response
+                 :effects effects :next-node next-node)
+                options))))
+    (nreverse options)))
 ```
 
 ### Pending 状态
@@ -646,7 +683,11 @@ talk <npc-name>
 与 TGM 1.0 一致：
 - type: `kill` / `collect` / `explore` / `talk`
 - status: `inactive` → `active` → `completed`
-- 进度在 action handler 中通过 `tg-track-quest` 推进
+- 进度在各 action handler 中直接调用 `tg-track-quest` 推进，调用点：
+  - `kill`: attack handler 目标死亡后
+  - `collect`: take handler 拾取后
+  - `explore`: go handler 进入房间后
+  - `talk`: talk handler 对话结束后
 - 完成时发放 rewards（exp/item/bonus-points/trigger）
 
 ### 商店系统（tg-shop.el）
