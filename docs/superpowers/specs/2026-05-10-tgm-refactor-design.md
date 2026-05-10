@@ -253,6 +253,7 @@ tg.el       ← 入口，require 全部
   props           ;; 属性集合 (container supporter scenery static wearable edible readable)
   state           ;; 容器开闭状态: open / closed / locked / nil（非容器为 nil）
   key             ;; 解锁所需钥匙的 object symbol（nil 表示无需钥匙/任何方式可开）
+  effects         ;; 装备效果 ((attack . 3) (defense . 2))，仅 wearable 有效；可食用/可使用对象的效果也放这里
   handler)        ;; (lambda (ast game) => t/nil)
 ```
 
@@ -264,8 +265,8 @@ tg.el       ← 入口，require 全部
 | `supporter` | 东西可放在上面，`supports` 生效 |
 | `scenery` | 背景装饰：不可取、不出现在物品列表描述中、但进入词汇表 |
 | `static` | 不可移动（不能 take），但出现在描述中 |
-| `wearable` | 可装备（`wear` 动词可用） |
-| `edible` | 可食用（`eat` 动词可用） |
+| `wearable` | 可装备（`wear` 动词可用），装备效果通过 `effects` 字段定义，combat 时动态叠加到玩家 attr |
+| `edible` | 可食用（`eat` 动词可用），食用效果通过 `effects` 字段定义 |
 | `readable` | 可阅读（`read` 动词可用） |
 
 ### 容器状态机
@@ -852,6 +853,15 @@ talk <npc-name>
 :name: 金币
 :synonyms: (金币 coin 钱 money)
 :desc: 一枚闪闪发光的金币。
+:END:
+
+** iron-helmet
+:PROPERTIES:
+:name: 铁头盔
+:synonyms: (头盔 helmet)
+:desc: 一顶坚固的铁头盔。
+:props: (wearable)
+:effects: ((defense . 3))
 :END:
 
 * Creatures
