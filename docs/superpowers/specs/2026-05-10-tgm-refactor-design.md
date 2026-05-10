@@ -187,7 +187,8 @@ tg.el       ← 入口，require 全部
   (unless (member (plist-get ast :action) tg-passive-actions)
     (tg-npc-run-behaviors game))              ;; 7. NPC 行为（非被动命令后）
   (unless (member (plist-get ast :action) tg-passive-actions)
-    (tg-game-incf game :turns)))              ;; 8. 回合计数
+    (tg-buffs-tick game)                     ;; 8. 临时效果倒计时
+    (tg-game-incf game :turns)))              ;; 9. 回合计数
 ```
 
 ### 执行规则
@@ -253,7 +254,10 @@ tg.el       ← 入口，require 全部
   props           ;; 属性集合 (container supporter scenery static wearable edible readable)
   state           ;; 容器开闭状态: open / closed / locked / nil（非容器为 nil）
   key             ;; 解锁所需钥匙的 object symbol（nil 表示无需钥匙/任何方式可开）
-  effects         ;; 装备效果 ((attack . 3) (defense . 2))，仅 wearable 有效；可食用/可使用对象的效果也放这里
+  effects         ;; 效果列表 ((hp . 20) (attack . 3 :duration 10) ...)
+                  ;; - 无 :duration: 永久生效（wearable 动态叠加，edible 吃下后永久写 attr）
+                  ;; - 有 :duration N: 临时效果（吃下后 N 回合有效），存入 :active-buffs
+                  ;; - non-wearable/non-edible 对象忽略此字段
   handler)        ;; (lambda (ast game) => t/nil)
 ```
 
@@ -266,7 +270,7 @@ tg.el       ← 入口，require 全部
 | `scenery` | 背景装饰：不可取、不出现在物品列表描述中、但进入词汇表 |
 | `static` | 不可移动（不能 take），但出现在描述中 |
 | `wearable` | 可装备（`wear` 动词可用），装备效果通过 `effects` 字段定义，combat 时动态叠加到玩家 attr |
-| `edible` | 可食用（`eat` 动词可用），食用效果通过 `effects` 字段定义 |
+| `edible` | 可食用（`eat` 动词可用）。食用后物品消耗。永久 effects（无 `:duration`）写入 attr；临时 effects（带 `:duration N`）添加到 `:active-buffs`，N 回合后自动撤销 |
 | `readable` | 可阅读（`read` 动词可用） |
 
 ### 容器状态机
@@ -507,7 +511,8 @@ attr 是一个 alist，游戏作者可自由定义属性名。约定属性：
 4. 伤害 = max(1, effective_attack - target.defense)
 5. 施加伤害
 6. 若目标死亡:
-   - 从房间移除
+   - 其 inventory 和 equipment 中所有物品掉落至当前房间
+   - 从房间 creatures 列表中移除
    - 触发 death-trigger
    - 发放 exp 奖励
    - 调用 (tg-track-quest 'kill target-creature-symbol) 更新 kill 类任务
@@ -518,7 +523,30 @@ attr 是一个 alist，游戏作者可自由定义属性名。约定属性：
    - 否则显示双方 HP
 ```
 
-装备加成采用动态计算：attr 存储基础值，每次 combat 遍历 equipment 列表叠加 effects（含装备和 buff）。卸下装备/移除 buff 后自动恢复，无需反向计算原始值。
+装备加成采用动态计算：attr 存储基础值，每次 combat 遍历 equipment 和 `:active-buffs` 列表叠加 effects。卸下装备/移除 buff 后自动恢复，无需反向计算原始值。
+
+### 临时效果生命周期
+
+```elisp
+(defun tg-buffs-tick (game)
+  "回合结束时递减所有临时效果的剩余回合。"
+  (let ((buffs (tg-game-get game :active-buffs)))
+    (dolist (buff buffs)
+      (cl-decf (plist-get (cdr buff) :remaining)))
+    (tg-game-put game :active-buffs
+                 (cl-remove-if (lambda (b) (<= (plist-get (cdr b) :remaining) 0))
+                               buffs))))
+
+(defun tg-buffs-apply (game effects)
+  "应用效果到 buff 列表。永久效果直接写 attr，临时效果进入 :active-buffs。"
+  (dolist (eff effects)
+    (if-let ((duration (plist-get (cdr eff) :duration)))
+        (push (cons (car eff)
+                    (list :delta (cdr eff) :remaining duration :duration duration))
+              (tg-game-get game :active-buffs))
+      ;; 永久效果：直接写入 player attr
+      (tg-creature-take-effect (tg-player game) (cons (car eff) (cadr eff))))))
+```
 
 ## 对话状态机（tg-dialog.el）
 
@@ -689,6 +717,7 @@ talk <npc-name>
   - `collect`: take handler 拾取后
   - `explore`: go handler 进入房间后
   - `talk`: talk handler 对话结束后
+- **Handler 拦截与 quest tracking**：当对象/房间 handler 在链中返回 t 拦截了动作（如自定义 take handler），action handler 不会执行，`tg-track-quest` 也不会被调用。这是预期行为——作者若需追踪 quest，应在自定义 handler 中手动调用 `tg-track-quest`
 - 完成时发放 rewards（exp/item/bonus-points/trigger）
 
 ### 商店系统（tg-shop.el）
@@ -751,6 +780,8 @@ talk <npc-name>
     (puthash :location  nil g)         ;; 当前房间 symbol
     (puthash :player    nil g)         ;; 玩家 creature symbol
     (puthash :inventory nil g)         ;; 玩家物品列表（symbol list）
+    (puthash :equipment nil g)         ;; 玩家装备列表（symbol list）
+    (puthash :active-buffs nil g)      ;; 活跃临时效果 (((hp . 20) :remaining 3) ...)
     g))
 
 (defun tg-game-get (game key)     (gethash key game))
@@ -776,12 +807,15 @@ talk <npc-name>
  (:player-attr . ((hp . 80) (attack . 12) (defense . 5) (exp . 350) ...))
  (:player-inventory . (sword potion))
  (:player-equipment . (helmet))
+ (:active-buffs . (((attack . 3) :remaining 5) ((hp . 20) :remaining 0)))
  (:rooms . ((courtyard (visit-count . 3) (contents torch key))
-            (hall (visit-count . 1) (creatures goblin)))))
+            (hall (visit-count . 1) (creatures goblin))))
+ (:objects . ((chest (:state . open) (:contents . (diamond)))
+              (barrel (:state . closed) (:contents . (fish)))))
  (:creatures . ((goblin (attr ((hp . 5) (attack . 5) ...)) (inventory))
-               (old-man (attr ((hp . 50) ...)) (inventory potion)))))
- (:shops . ((old-man (sell-rate . 0.5) (goods ((potion . 30)))))))
- (:quests . ((find-scale (status . active) (progress . 0))))))
+               (old-man (attr ((hp . 50) ...)) (inventory potion))))
+ (:shops . ((old-man (sell-rate . 0.5) (goods ((potion . 30))))))
+ (:quests . ((find-scale (status . active) (progress . 0)))))
 ```
 
 ### 保存/加载流程
