@@ -4,7 +4,7 @@
 
 **目标：** 基于 ifgame 架构思想全量重写 Text-Game-Maker，将命令解析改为 PEG 自然语言、动作分发改为 handler chain、对象模型改为属性驱动、地图改为方向出口，同时保留并重写任务/商店/对话/NPC AI/等级/存档等周边系统。
 
-**架构：** 18 个模块位于项目根目录，单向无环依赖。底层 tg-registry + tg-game 提供数据基础，tg-parser + tg-action + tg-commands 构成核心引擎，tg-room/tg-object/tg-creature 定义实体，上层 tg-dialog/tg-npc/tg-quest/tg-shop/tg-level 提供周边功能，tg-save/tg-config 处理持久化，tg-mode 提供 UI。
+**架构：** 18 个模块位于项目根目录，单向无环依赖。底层 tg-registry 提供数据基础，tg-object → tg-creature → tg-game 构成实体链（creature 的 effective-attr 需要 object，game 的 buffs-apply 需要 creature），tg-room 独立，tg-action + tg-parser + tg-commands 构成核心引擎，上层 tg-dialog/tg-npc/tg-quest/tg-shop/tg-level 提供周边功能，tg-config/tg-save 处理持久化（config 先于 save），tg-mode 提供 UI。
 
 **技术栈：** Emacs Lisp，peg.el（内置），ERT 测试框架，Org-mode 配置格式
 
@@ -108,7 +108,7 @@
 
 ### 任务 2：tg-game.el — 游戏动态状态
 
-**依赖：** 任务 1
+**依赖：** 任务 1, 任务 5
 **文件集：** `tg-game.el`, `test/tg-game-test.el`
 **导出/变更接口：** `tg-game.el::tg-game`, `tg-game.el::tg-new-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-game.el::tg-game-incf`, `tg-game.el::tg-player`, `tg-game.el::tg-buffs-tick`, `tg-game.el::tg-buffs-apply`
 **消费接口：** 无
@@ -320,21 +320,21 @@
 
 ### 任务 5：tg-creature.el — 生物系统
 
-**依赖：** 任务 1
+**依赖：** 任务 1, 任务 4
 **文件集：** `tg-creature.el`, `test/tg-creature-test.el`
 **导出/变更接口：** `tg-creature.el::tg-creature-symbol`, `tg-creature.el::tg-creature-name`, `tg-creature.el::tg-creature-attr`, `tg-creature.el::tg-creature-inventory`, `tg-creature.el::tg-creature-equipment`, `tg-creature.el::tg-creature-exp-reward`, `tg-creature.el::tg-creature-behaviors`, `tg-creature.el::tg-creature-death-trigger`, `tg-creature.el::tg-creature-shopkeeper`, `tg-creature.el::tg-creature-handler`, `tg-creature.el::tg-creature-dead-p`, `tg-creature.el::tg-creature-take-effect`, `tg-creature.el::tg-creature-add-item`, `tg-creature.el::tg-creature-remove-item`, `tg-creature.el::tg-creature-has-item`, `tg-creature.el::tg-creature-effective-attr`
-**消费接口：** `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-register-creature`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-player`
+**消费接口：** `tg-registry.el::tg-get-creature`, `tg-registry.el::tg-get-object`, `tg-registry.el::tg-register-creature`, `tg-game.el::tg-game`, `tg-game.el::tg-game-get`, `tg-game.el::tg-player`
 **复杂度：** standard
 
 - [ ] **步骤 1：编写测试**
 
-覆盖：creature 创建（attr 初始值）、dead-p（hp≤0）、take-effect（写入/修改 attr、支持新属性、hp 最低为 0 但其他属性不能为负或可负都行——约定 hp 不低于 0）、add/remove/has-item、effective-attr（基础 attr + equipment 遍历叠加 effects + active-buffs 叠加）。
+覆盖：creature 创建（attr 初始值）、dead-p（hp≤0）、take-effect（写入/修改 attr、支持新属性、hp 不低于 0）、add/remove/has-item、effective-attr（基础 attr + equipment 遍历叠加 effects（需 tg-object-effects）+ active-buffs 叠加）。
 
 - [ ] **步骤 2：运行测试确认失败**
 
 - [ ] **步骤 3：实现 tg-creature.el**
 
-覆盖 `cl-defstruct tg-creature`，`tg-creature-dead-p`（hp ≤ 0）、`tg-creature-take-effect`（attr alist 操作，有则改、无则 push，hp 不低于 0）、`tg-creature-add-item`/`tg-creature-remove-item`/`tg-creature-has-item`、`tg-creature-effective-attr`（attr + equipment 的 effects 动态叠加 + active-buffs 动态叠加）。
+覆盖 `cl-defstruct tg-creature`，`tg-creature-dead-p`（hp ≤ 0）、`tg-creature-take-effect`（attr alist 操作，有则改、无则 push，hp 不低于 0）、`tg-creature-add-item`/`tg-creature-remove-item`/`tg-creature-has-item`、`tg-creature-effective-attr`（遍历 equipment，通过 `tg-get-object` + `tg-object-effects` 动态叠加，再加上 active-buffs 叠加）。
 
 - [ ] **步骤 4：运行测试确认通过**
 
@@ -378,7 +378,7 @@
 
 - [ ] **步骤 3：实现 tg-parser.el**
 
-PEG 语法定义：
+PEG 语法定义（注意：规格中用 `+` 但实际需要 `*` 以支持 `look`/`inventory`/`quit` 等无宾语命令，以计划为准）：
 ```elisp
 (defvar tg-grammar
   (peg-parse
@@ -462,7 +462,7 @@ PEG 语法定义：
 - place：验证目标 container/supporter → 放入
 - open：closed→open，locked→提示需解锁
 - unlock：locked + 匹配 key→closed，key 不匹配→提示
-- attack：动态计算 effective_attack/defense → 伤害 → 死亡（掉落/exp/track-quest）→ 反击
+- attack：动态计算 effective_attack/defense → 伤害 → 死亡（掉落/exp/track-quest，`tg-track-quest` 使用全局 `tg-game`）→ 反击
 - eat：消耗物品 → 永久 effects 写 attr / 临时 effects 入 buffs
 - wear：wearable→移入 equipment
 - talk：启动 dialog 状态机
@@ -490,10 +490,12 @@ PEG 语法定义：
       (let ((obj (tg-object-find-in-room do-key game)))
         (if obj
             (if (tg-object-takeable-p obj)
-                (progn
-                  (tg-object-move do-key (tg-room-contents room) :inventory)
+                (let ((room (tg-get-room (tg-game-get game :location)))
+                      (player (tg-player)))
+                  (setf (tg-room-contents room) (remove do-key (tg-room-contents room)))
+                  (tg-creature-add-item player do-key)
                   (tg-message (format "拾取了%s。" (tg-object-name obj)))
-                  (tg-track-quest 'collect do-key game)
+                  (tg-track-quest 'collect do-key)
                   t)
               (tg-message "你拿不起来。"))
           (tg-message "这里没有这个东西。"))))))
@@ -531,9 +533,7 @@ PEG 语法定义：
                            (* 10 (or (tg-creature-attr-get npc 'level) 1)))))
               (tg-creature-take-effect player (cons 'exp exp))
               (tg-message (format "%s被击败了！获得%d经验。" (tg-creature-name npc) exp)))
-            (unless (null (tg-track-quest 'kill target game))
-              ;; handled in tg-track-quest
-              nil))
+            (tg-track-quest 'kill target)
         ;; 反击
         (let* ((n-attack (or (tg-creature-attr-get npc 'attack) 0))
                (p-defense (or (tg-creature-effective-attr player 'defense game) 0))
@@ -610,7 +610,7 @@ PEG 语法定义：
 
 - [ ] **步骤 3：实现 tg-quest.el**
 
-实现 `cl-defstruct tg-quest`、`tg-quest-activate`、`tg-track-quest`（按 type 匹配目标，incf progress，达标则 set status completed + 发放 rewards）、rewards 发放逻辑。
+实现 `cl-defstruct tg-quest`、`tg-quest-activate`、`tg-track-quest (type target-symbol)`（使用全局 `tg-game`，按 type 匹配目标，incf progress，达标则 set status completed + 发放 rewards）、rewards 发放逻辑。
 
 - [ ] **步骤 4：运行测试确认通过**
 
@@ -765,15 +765,13 @@ PEG 语法定义：
 
 - [ ] **步骤 1：编写测试**
 
-覆盖：保存→文件存在且格式正确（prin1 可读）、加载→动态状态恢复（location/turns/state/active-buffs）、room visit-count 恢复、object state/contents 恢复、creature attr 恢复、round-trip（save→load→save 一致）。
+覆盖：Org 文件解析（`#+TITLE`/`#+AUTHOR`/`#+START` 全局属性读取）、Rooms section 解析（name/desc/exits/contents/creatures 属性 → make-tg-room → tg-register-room）、Objects section 解析（name/synonyms/props/state/effects 属性 → make-tg-object → tg-register-object）、Creatures section 解析（name/attr/inventory/behaviors → make-tg-creature → tg-register-creature）、Dialog section 解析（内联 DSL `text :: response → effects → next-node`）、Shops/Quests/Levels section 解析、handler 符号解析（intern + fboundp）、同目录 handlers.el 自动加载。
 
 - [ ] **步骤 2：运行测试确认失败**
 
-- [ ] **步骤 3：实现 tg-save.el**
+- [ ] **步骤 3：实现 tg-config.el**
 
-`tg-save-game`：收集 game 动态字段 + rooms 动态字段（visit-count/contents/creatures）+ objects 动态字段（state/contents/supports）+ creatures 动态字段（attr/inventory/equipment）+ quests 动态字段（status/progress）+ shops 动态字段 + active-buffs → `prin1` 写入。
-
-`tg-load-game`：`read` 存档 → 从 `:config-dir` 调 `tg-config-load` 重载配置 → 用存档数据覆盖动态字段。
+`tg-config-load (org-file)`：加载同目录 `handlers.el`（若存在）→ `org-element-parse-buffer` 解析 Org → 读取 `#+TITLE`/`#+AUTHOR`/`#+START` → 按一级标题分派到各 section 解析器 → 每个 section 遍历二级标题，从 PROPERTIES drawer 读取字段 → 构造 struct 调用 `tg-register-*` → Dialog 的 Org body 用 `tg-config-parse-dialog-option` 解析内联 DSL。
 
 - [ ] **步骤 4：运行测试确认通过**
 
@@ -992,17 +990,21 @@ rm test/test-action.el test/test-creature-maker.el test/test-dialog-system.el \
 
 > 仅 `parallel-executing-plans` 使用；`serial-executing-plans` 忽略本节。
 
-**Critical Path:** 任务 1 → 任务 3/4/5/6 → 任务 7 → 任务 8 → 任务 9 → 任务 16 → 任务 15 → 任务 18 → 任务 19 → 任务 20
+**Critical Path:** 任务 1 → 任务 4 → 任务 5 → 任务 2 → 任务 7 → 任务 8 → 任务 9 → 任务 15 → 任务 16 → 任务 18 → 任务 19 → 任务 20
+
+依赖链说明：registry(1) → object(4) → creature(5, 需要 object 做 effective-attr) → game(2, 需要 creature 做 buffs-apply) → parser(7, 需要 game+action) → commands(8) → builtins(9) → config(15) → save(16) → mode(18) → integration(19) → cleanup(20)
 
 - Wave 1（无依赖）：任务 1
-- Wave 2（依赖 Wave 1）：任务 2（依赖 1）, 任务 3（依赖 1）, 任务 4（依赖 1）, 任务 5（依赖 1）, 任务 6（依赖 1）
-- Wave 3（依赖 Wave 1+2）：任务 7（依赖 1, 2, 6）
-- Wave 4（依赖 Wave 2+3）：任务 8（依赖 1, 2, 3, 4, 5, 6, 7）
-- Wave 5（依赖 Wave 4）：任务 9（依赖 8）
-- Wave 6（依赖 Wave 4）：任务 10（依赖 1, 3, 5）, 任务 11（依赖 1, 3, 5）, 任务 12（依赖 1, 5）, 任务 13（依赖 1, 5）, 任务 14（依赖 5）
-- Wave 7（依赖 Wave 5+6）：任务 16（依赖 1-5, 10, 12, 13, 14）
-- Wave 8（依赖 Wave 7）：任务 16（依赖 1-5, 12, 13, 15）, 任务 17（依赖 15）
-- Wave 9（依赖 Wave 8）：任务 18（依赖 7, 8, 10, 15, 16）
-- Wave 10（依赖 Wave 9+所有前序）：任务 19（依赖 1-18）
-- Wave 11（依赖 Wave 10）：任务 20（依赖 19）
+- Wave 2（依赖 Wave 1）：任务 3（依赖 1）, 任务 4（依赖 1）, 任务 6（依赖 1）
+- Wave 3（依赖 Wave 2）：任务 5（依赖 1, 4）
+- Wave 4（依赖 Wave 3）：任务 2（依赖 1, 5）
+- Wave 5（依赖 Wave 4）：任务 7（依赖 1, 2, 6）
+- Wave 6（依赖 Wave 2-5）：任务 8（依赖 1, 2, 3, 4, 5, 6, 7）
+- Wave 7（依赖 Wave 6）：任务 9（依赖 8）
+- Wave 8（依赖 Wave 3+6，与 Wave 7 并行）：任务 10（依赖 1, 5）, 任务 11（依赖 1, 3, 5）, 任务 12（依赖 1, 5）, 任务 13（依赖 1, 5）, 任务 14（依赖 5）
+- Wave 9（依赖 Wave 7+8）：任务 15（依赖 1, 2, 3, 4, 5, 10, 12, 13, 14）
+- Wave 10（依赖 Wave 9）：任务 16（依赖 1, 2, 3, 4, 5, 12, 13, 15）, 任务 17（依赖 15）
+- Wave 11（依赖 Wave 10）：任务 18（依赖 7, 8, 10, 15, 16）
+- Wave 12（依赖 Wave 11+所有前序）：任务 19（依赖 1-18）
+- Wave 13（依赖 Wave 12）：任务 20（依赖 19）
 - Wave FINAL（所有任务完成后）：F1 规格合规、F2 代码质量、F3 集成测试验证、F4 范围保真
