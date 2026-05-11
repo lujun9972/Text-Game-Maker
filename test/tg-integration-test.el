@@ -160,6 +160,37 @@
           (should (string-match "药水" output))))
     (tg-integration-teardown)))
 
+(ert-deftest test-tg-explore-quest-tracking ()
+  "测试移动到目标房间追踪 explore 类型任务。"
+  (unwind-protect
+      (progn
+        (tg-integration-setup)
+        (let ((quest (make-tg-quest :symbol 'test-explore
+                                    :type 'explore :target 'forest-path
+                                    :count 1 :progress 0 :status 'active
+                                    :rewards '((exp 50)))))
+          (tg-register-quest 'test-explore quest))
+        (tg-simulate-command "north")
+        (should (eq (tg-game-get tg-game :location) 'forest-path))
+        (let ((q (tg-get-quest 'test-explore)))
+          (should (eq (tg-quest-status q) 'completed))))
+    (tg-integration-teardown)))
+
+(ert-deftest test-tg-talk-quest-tracking ()
+  "测试与 NPC 对话追踪 talk 类型任务。"
+  (unwind-protect
+      (progn
+        (tg-integration-setup)
+        (let ((quest (make-tg-quest :symbol 'test-talk
+                                    :type 'talk :target 'old-man
+                                    :count 1 :progress 0 :status 'active
+                                    :rewards '((exp 10)))))
+          (tg-register-quest 'test-talk quest))
+        (tg-simulate-command "talk old-man")
+        (let ((q (tg-get-quest 'test-talk)))
+          (should (eq (tg-quest-status q) 'completed))))
+    (tg-integration-teardown)))
+
 (ert-deftest test-tg-all-tests-pass ()
   "元测试：运行所有测试确认无回归。"
   (should t))

@@ -80,6 +80,7 @@ WORD: 动作词或同义词"
           (let ((target-room (tg-get-room target-sym)))
             (when target-room
               (tg-room-visit target-room)
+              (tg-track-quest 'explore target-sym)
               (tg-message "%s" (tg-room-describe target-room)))
             t))))))
 
@@ -461,6 +462,7 @@ WORD: 动作词或同义词"
           (tg-message "这里没有这个人。"))
          (t
           (tg-dialog-start do-key)
+          (tg-track-quest 'talk do-key)
           t)))))))
 
 (defun tg-action--handler-buy (ast game)
