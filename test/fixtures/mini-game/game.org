@@ -1,0 +1,187 @@
+#+TITLE: Mini Test Game
+#+AUTHOR: TestBot
+#+START: village
+#+PLAYER: player
+
+* Rooms
+
+** village
+:PROPERTIES:
+:NAME: 村庄
+:DESC: 一个宁静的小村庄。北边是一条通往森林的小路。
+:SHORT_DESC: 村庄
+:EXITS: north=forest-path
+:CONTENTS: rusty-key,apple
+:CREATURES: old-man
+:END:
+
+** forest-path
+:PROPERTIES:
+:NAME: 森林小路
+:DESC: 一条蜿蜒的林间小路。北边有一座古老的塔。
+:SHORT_DESC: 森林小路
+:EXITS: south=village,north=tower-entrance
+:CONTENTS:
+:CREATURES: goblin,merchant
+:END:
+
+** tower-entrance
+:PROPERTIES:
+:NAME: 塔入口
+:DESC: 一座古老石塔的入口。一口沉重的铁门紧锁着。
+:SHORT_DESC: 塔入口
+:EXITS: south=forest-path
+:CONTENTS: iron-door
+:CREATURES:
+:END:
+
+* Objects
+
+** rusty-key
+:PROPERTIES:
+:NAME: 生锈的钥匙
+:SYNONYMS: key,rusty-key
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** apple
+:PROPERTIES:
+:NAME: 苹果
+:SYNONYMS: apple,fruit
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (hp 10)
+:HANDLER:
+:END:
+
+** iron-door
+:PROPERTIES:
+:NAME: 铁门
+:SYNONYMS: door,iron-door
+:PROPS: container,scenery,static
+:STATE: locked
+:KEY: rusty-key
+:EFFECTS:
+:HANDLER:
+:END:
+
+** sword
+:PROPERTIES:
+:NAME: 剑
+:SYNONYMS: sword,blade
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** shield
+:PROPERTIES:
+:NAME: 盾牌
+:SYNONYMS: shield
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** potion
+:PROPERTIES:
+:NAME: 药水
+:SYNONYMS: potion
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (hp 25)
+:HANDLER:
+:END:
+
+* Creatures
+
+** old-man
+:PROPERTIES:
+:NAME: 老人
+:ATTR: hp 50
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD:
+:BEHAVIORS:
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** goblin
+:PROPERTIES:
+:NAME: 哥布林
+:ATTR: hp 30 attack 10 defense 2
+:INVENTORY: sword
+:EQUIPMENT:
+:EXP_REWARD: 50
+:BEHAVIORS: ((always . (say "哥布林冲你咆哮！")))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** merchant
+:PROPERTIES:
+:NAME: 商人
+:ATTR: hp 50
+:INVENTORY: potion,shield
+:EQUIPMENT:
+:EXP_REWARD:
+:BEHAVIORS:
+:DEATH_TRIGGER:
+:SHOPKEEPER: t
+:HANDLER:
+:END:
+
+** player
+:PROPERTIES:
+:NAME: 勇者
+:ATTR: hp 100 attack 12 defense 5 gold 200 exp 0 level 1 bonus-points 0
+:INVENTORY: potion
+:EQUIPMENT:
+:EXP_REWARD:
+:BEHAVIORS:
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+* Dialogs
+
+** old-man
+:PROPERTIES:
+:NPC_SYMBOL: old-man
+:GREETING: 你好，年轻人。北边的森林里有危险。
+:END:
+告诉我更多 :: 森林里有哥布林出没，小心点。 → (exp 10)
+再见 :: 祝你好运。
+
+* Shops
+
+** merchant-shop
+:PROPERTIES:
+:NPC_SYMBOL: merchant
+:SELL_RATE: 0.5
+:GOODS: potion=30,shield=50
+:END:
+
+* Quests
+
+** kill-goblin
+:PROPERTIES:
+:TYPE: kill
+:TARGET: goblin
+:COUNT: 1
+:REWARDS: (exp 50) (gold 20)
+:END:

@@ -360,12 +360,16 @@ org-file: Org 配置文件路径
     ;; 提取全局属性
     (let ((title (tg-config--parse-keyword content "TITLE"))
           (author (or (tg-config--parse-keyword content "AUTHOR") "Unknown"))
-          (start-room (tg-config--parse-keyword content "START")))
+          (start-room (tg-config--parse-keyword content "START"))
+          (player-name (tg-config--parse-keyword content "PLAYER")))
       ;; 创建游戏状态
       (let ((game (tg-new-game title author)))
         ;; 设置起始房间
         (when start-room
           (tg-game-put game :location (intern start-room)))
+        ;; 设置玩家
+        (when player-name
+          (tg-game-put game :player (intern player-name)))
         ;; 遍历一级标题，分派到各 section 解析器
         ;; Org 结构: org-data -> section (keywords) + headline (section) + ...
         (dolist (section (org-element-contents content))

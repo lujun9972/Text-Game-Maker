@@ -78,8 +78,13 @@
       (when location
         (let ((room (tg-get-room location)))
           (when room
+            ;; 添加房间中的对象
             (dolist (obj-sym (tg-room-all-visible-objects room))
-              (tg-parser-add-object-vocab vocab obj-sym)))))
+              (tg-parser-add-object-vocab vocab obj-sym))
+            ;; 添加房间中的生物名称
+            (dolist (creature-sym (tg-room-creatures room))
+              (unless (eq creature-sym player-sym)
+                (tg-parser-add-creature-vocab vocab creature-sym))))))
       (when inventory
         (dolist (obj-sym inventory)
           (tg-parser-add-object-vocab vocab obj-sym)))
@@ -94,6 +99,14 @@
       (puthash (downcase (tg-object-name obj)) obj-sym vocab)
       (dolist (syn (tg-object-synonyms obj))
         (puthash (downcase (format "%s" syn)) obj-sym vocab)))))
+
+(defun tg-parser-add-creature-vocab (vocab creature-sym)
+  "将生物的名称和 symbol 名添加到词汇表。"
+  (let ((creature (tg-get-creature creature-sym)))
+    (when creature
+      (puthash (downcase (tg-creature-name creature)) creature-sym vocab)
+      ;; symbol 名也加入（如 "goblin" → 'goblin）
+      (puthash (downcase (symbol-name creature-sym)) creature-sym vocab))))
 
 (defun tg-parser-classify-words (tokens vocab)
   "将词列表分类为形容词和名词。返回 (noun-sym adjectives-list)。"
