@@ -1,0 +1,494 @@
+#+TITLE: 地牢冒险
+#+AUTHOR: DarkSun
+#+START: entrance
+#+PLAYER: hero
+
+* Rooms
+
+** cell
+:PROPERTIES:
+:NAME: 阴暗潮湿的牢房
+:DESC: 铁栅栏已经锈蚀，角落里堆着一些破烂的稻草。
+:SHORT_DESC: 牢房
+:EXITS: east=corridor,south=entrance
+:CONTENTS: bread,lockpick
+:CREATURES: rat,prisoner
+:END:
+
+** corridor
+:PROPERTIES:
+:NAME: 狭窄的走廊
+:DESC: 两侧墙壁上的火把忽明忽暗，远处传来奇怪的声响。
+:SHORT_DESC: 走廊
+:EXITS: west=cell,east=armory,south=hall
+:CONTENTS: shield,leather-armor
+:CREATURES: spider,slime
+:END:
+
+** armory
+:PROPERTIES:
+:NAME: 废弃的武器库
+:DESC: 锈迹斑斑的武器架上还残留着一些可以使用的装备。
+:SHORT_DESC: 武器库
+:EXITS: west=corridor,south=throne
+:CONTENTS: iron-sword,bow,arrow,helmet
+:CREATURES: golem
+:END:
+
+** entrance
+:PROPERTIES:
+:NAME: 地牢入口
+:DESC: 沉重的石门在你身后缓缓关闭，四周弥漫着腐朽的气息。墙壁上的火把发出微弱的光芒。
+:SHORT_DESC: 地牢入口
+:EXITS: north=cell,east=hall
+:CONTENTS: torch,rusty-key
+:CREATURES: guard
+:END:
+
+** hall
+:PROPERTIES:
+:NAME: 宏伟的大厅
+:DESC: 破旧的水晶灯从天花板上垂下，地板上布满了裂痕和灰尘。
+:SHORT_DESC: 大厅
+:EXITS: north=corridor,west=entrance,east=throne
+:CONTENTS: map,potion,gold
+:CREATURES: goblin,bat,goblin-merchant
+:END:
+
+** throne
+:PROPERTIES:
+:NAME: 王座间
+:DESC: 一张腐朽的石制王座矗立在房间尽头，周围的空气中漂浮着诡异的光点。
+:SHORT_DESC: 王座间
+:EXITS: north=armory,west=hall
+:CONTENTS: crown,gem,sword-of-king
+:CREATURES: skeleton-king,skeleton-minion
+:END:
+
+* Objects
+
+** torch
+:PROPERTIES:
+:NAME: 燃烧的火把
+:SYNONYMS: torch
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** rusty-key
+:PROPERTIES:
+:NAME: 生锈的钥匙
+:SYNONYMS: key,rusty-key
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** map
+:PROPERTIES:
+:NAME: 残破的地图
+:SYNONYMS: map
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** potion
+:PROPERTIES:
+:NAME: 红色药水
+:SYNONYMS: potion
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (hp 30)
+:HANDLER:
+:END:
+
+** gold
+:PROPERTIES:
+:NAME: 一袋金币
+:SYNONYMS: gold,coin
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** crown
+:PROPERTIES:
+:NAME: 古老的王冠
+:SYNONYMS: crown
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (attack 3) (defense 2)
+:HANDLER:
+:END:
+
+** gem
+:PROPERTIES:
+:NAME: 璀璨的宝石
+:SYNONYMS: gem
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (hp 10) (attack 2)
+:HANDLER:
+:END:
+
+** sword-of-king
+:PROPERTIES:
+:NAME: 国王之剑
+:SYNONYMS: sword-of-king,king-sword
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (attack 15) (defense 5)
+:HANDLER:
+:END:
+
+** bread
+:PROPERTIES:
+:NAME: 干硬的面包
+:SYNONYMS: bread
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (hp 15)
+:HANDLER:
+:END:
+
+** lockpick
+:PROPERTIES:
+:NAME: 精巧的开锁工具
+:SYNONYMS: lockpick,pick
+:PROPS:
+:STATE:
+:KEY:
+:EFFECTS:
+:HANDLER:
+:END:
+
+** shield
+:PROPERTIES:
+:NAME: 铁盾
+:SYNONYMS: shield
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (defense 5)
+:HANDLER:
+:END:
+
+** leather-armor
+:PROPERTIES:
+:NAME: 轻便的皮甲
+:SYNONYMS: armor,leather-armor
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (defense 3)
+:HANDLER:
+:END:
+
+** iron-sword
+:PROPERTIES:
+:NAME: 铁剑
+:SYNONYMS: iron-sword
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (attack 5)
+:HANDLER:
+:END:
+
+** bow
+:PROPERTIES:
+:NAME: 短弓
+:SYNONYMS: bow
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (attack 4)
+:HANDLER:
+:END:
+
+** arrow
+:PROPERTIES:
+:NAME: 箭矢
+:SYNONYMS: arrow,arrows
+:PROPS: edible
+:STATE:
+:KEY:
+:EFFECTS: (attack 2)
+:HANDLER:
+:END:
+
+** helmet
+:PROPERTIES:
+:NAME: 铁头盔
+:SYNONYMS: helmet
+:PROPS: wearable
+:STATE:
+:KEY:
+:EFFECTS: (defense 2) (hp 5)
+:HANDLER:
+:END:
+
+* Creatures
+
+** hero
+:PROPERTIES:
+:NAME: 勇敢的冒险者
+:ATTR: hp 100 attack 5 defense 3 exp 0 level 1 bonus-points 0 gold 20
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD:
+:BEHAVIORS:
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** guard
+:PROPERTIES:
+:NAME: 地牢守卫
+:ATTR: hp 40 attack 8 defense 4
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 30
+:BEHAVIORS: (((player-in-room) say "站住！这里不允许进入！") (always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** goblin
+:PROPERTIES:
+:NAME: 狡猾的哥布林
+:ATTR: hp 25 attack 6 defense 2
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 18
+:BEHAVIORS: (((hp-below 13) say "你休想活着离开！") (always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** bat
+:PROPERTIES:
+:NAME: 巨大的蝙蝠
+:ATTR: hp 15 attack 4 defense 1
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 10
+:BEHAVIORS: ((always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** skeleton-king
+:PROPERTIES:
+:NAME: 骷髅王
+:ATTR: hp 80 attack 15 defense 8
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 120
+:BEHAVIORS: (((hp-below 30) say "蝼蚁！你以为你能赢？") (always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** skeleton-minion
+:PROPERTIES:
+:NAME: 骷髅士兵
+:ATTR: hp 35 attack 9 defense 5
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 25
+:BEHAVIORS: ((always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** rat
+:PROPERTIES:
+:NAME: 肥大的老鼠
+:ATTR: hp 10 attack 2 defense 0
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 5
+:BEHAVIORS: (((hp-below 5) move random))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** prisoner
+:PROPERTIES:
+:NAME: 虚弱的囚犯
+:ATTR: hp 20 attack 1 defense 0
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 8
+:BEHAVIORS: (((player-in-room) say "请救救我..."))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** spider
+:PROPERTIES:
+:NAME: 巨大的蜘蛛
+:ATTR: hp 20 attack 7 defense 1
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 15
+:BEHAVIORS: ((always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** slime
+:PROPERTIES:
+:NAME: 绿色史莱姆
+:ATTR: hp 30 attack 3 defense 6
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 20
+:BEHAVIORS: ((always debuff defense 2))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** golem
+:PROPERTIES:
+:NAME: 石像鬼
+:ATTR: hp 60 attack 12 defense 10
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 50
+:BEHAVIORS: (((player-in-room) say "擅闯武器库者，杀无赦！") ((hp-below 30) buff attack 3) (always attack))
+:DEATH_TRIGGER:
+:SHOPKEEPER: nil
+:HANDLER:
+:END:
+
+** goblin-merchant
+:PROPERTIES:
+:NAME: 哥布林商人
+:ATTR: hp 30 attack 3 defense 2
+:INVENTORY:
+:EQUIPMENT:
+:EXP_REWARD: 15
+:BEHAVIORS: (((player-in-room) say "来来来，看看我的好东西！"))
+:DEATH_TRIGGER:
+:SHOPKEEPER: t
+:HANDLER:
+:END:
+
+* Dialogs
+
+** prisoner
+:PROPERTIES:
+:NPC_SYMBOL: prisoner
+:GREETING: 请救救我...你能帮帮我吗？
+:END:
+你是谁？ :: 我是被骷髅王关押的探险者。如果你能救我出去，我会报答你的！
+有什么线索吗？ :: 听说武器库里有把好剑！从走廊往右就能到。还有...地牢入口的守卫身上可能有钥匙。 → (exp 15)
+给你点面包 :: 谢谢你！这个给你，是我在牢房角落找到的。 → (exp 10)
+
+** guard
+:PROPERTIES:
+:NPC_SYMBOL: guard
+:GREETING: 哼，你想干什么？
+:END:
+你是谁？ :: 我是骷髅王的手下，负责看守地牢入口。
+关于骷髅王... :: 骷髅王？他在王座间等着呢。不过你得先通过走廊里的那些怪物才行。 → (exp 10)
+
+** goblin
+:PROPERTIES:
+:NPC_SYMBOL: goblin
+:GREETING: 嘿嘿嘿...你想跟哥布林做什么？
+:END:
+交出你的宝物！ :: 好吧好吧...拿去！ → (exp 5)
+
+** golem
+:PROPERTIES:
+:NPC_SYMBOL: golem
+:GREETING: ......
+:END:
+（沉默注视） :: ......你可不像其他入侵者。
+
+* Shops
+
+** merchant-shop
+:PROPERTIES:
+:NPC_SYMBOL: goblin-merchant
+:SELL_RATE: 0.3
+:GOODS: bread=10,potion=25,rusty-key=15
+:END:
+
+* Quests
+
+** kill-rat
+:PROPERTIES:
+:TYPE: kill
+:TARGET: rat
+:COUNT: 1
+:REWARDS: (exp 10)
+:END:
+
+** talk-prisoner
+:PROPERTIES:
+:TYPE: talk
+:TARGET: prisoner
+:COUNT: 1
+:REWARDS: (exp 15) (item map)
+:END:
+
+** collect-sword
+:PROPERTIES:
+:TYPE: collect
+:TARGET: iron-sword
+:COUNT: 1
+:REWARDS: (exp 20)
+:END:
+
+** kill-goblin
+:PROPERTIES:
+:TYPE: kill
+:TARGET: goblin
+:COUNT: 1
+:REWARDS: (exp 30)
+:END:
+
+** explore-throne
+:PROPERTIES:
+:TYPE: explore
+:TARGET: throne
+:COUNT: 1
+:REWARDS: (exp 50)
+:END:
+
+** defeat-skeleton-king
+:PROPERTIES:
+:TYPE: kill
+:TARGET: skeleton-king
+:COUNT: 1
+:REWARDS: (exp 200) (bonus-points 5)
+:END:
