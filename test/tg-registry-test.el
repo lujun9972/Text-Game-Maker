@@ -16,7 +16,7 @@
   (tg-register-dialog 'greet '(dialog . "问候"))
   (tg-register-shop 'shop1 '(shop . "商店"))
   (tg-register-quest 'main '(quest . "主线"))
-  (tg-register-action 'take '(action . "拿取"))
+  (puthash 'take '(action . "拿取") tg--actions)
   (should (equal (tg-get-dialog 'greet) '(dialog . "问候")))
   (should (equal (tg-get-shop 'shop1) '(shop . "商店")))
   (should (equal (tg-get-quest 'main) '(quest . "主线")))
