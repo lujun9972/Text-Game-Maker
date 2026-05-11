@@ -1,959 +1,616 @@
 #+TITLE: Text-Game-Maker 使用手册
 #+AUTHOR: DarkSun
-#+DATE: 2026-05-01
+#+DATE: 2026-05-12
 #+OPTIONS: ^:{}
 #+LANGUAGE: cn
 
 * 简介
 
-Text-Game-Maker 是一款基于 Emacs Lisp 的文本游戏制作工具，功能仿照 RPG Maker。
-它提供了完整的游戏框架，包括房间地图、物品系统、生物系统、战斗系统、升级系统、NPC 行为系统、存档系统和任务系统。
+Text-Game-Maker 是基于 Emacs Lisp 的文字冒险游戏制作框架。通过单个 Org 文件定义全部游戏世界。
 
-** 特性
+**v2 架构由三个核心机制组成：**
 
-- 基于 EIEIO / cl-defstruct 的面向对象设计，包含 Room、Inventory、Creature 三大核心类
-- 房间系统：支持房间描述、物品、生物、进出触发事件
-- 地图系统：通过文本配置文件定义二维地图，支持上下左右导航
-- 物品系统：支持 usable（消耗品）和 wearable（装备）两种类型，可配置使用效果
-- 生物系统：支持属性管理、物品携带、装备穿戴
-- 战斗系统：支持攻击、反击、击败触发事件
-- 升级系统：经验值、等级、技能点分配
-- NPC 行为系统：NPC 可根据条件主动攻击、移动、对话、施放状态效果
-- 存档系统：支持游戏进度保存与恢复，自动序列化玩家、房间、生物状态
-- 任务系统：支持击杀、收集、探索、对话四种任务类型，自动追踪进度与奖励发放
-- 触发器系统：为房间、物品、生物提供丰富的触发事件机制
-- 自定义 major mode（=tg-mode=）：提供交互式游戏命令行界面，支持 eldoc
-- 可扩展的 action 系统：通过 =tg-defaction= 宏轻松定义新的游戏命令
-- 配置文件生成器：通过交互界面生成配置文件
+- **Registry 全局注册表**（=tg-registry.el=）— 所有游戏实体（房间、物品、生物等）注册到全局哈希表中，通过 symbol 查找。零依赖。
+- **Org 配置文件** — 单个 =game.org= 定义 6 类游戏实体（Rooms、Objects、Creatures、Dialogs、Shops、Quests），由 =tg-config-load= 解析并注册到 Registry。
+- **Handler Chain Dispatch** — 玩家命令经过 9 步处理链：error → room-before → io → do → action → after → NPC → buffs-tick → turn-increment。
 
-* 安装
+* 安装与快速开始
 
-** 依赖
+**依赖：** Emacs 27+（内置 org-element、cl-lib）
 
-- Emacs 24+（需要内置 EIEIO 库）
-- 内置依赖：=eieio=, =thingatpt=, =cl-lib=
+**安装：**
 
-** 安装步骤
+#+begin_src elisp
+(add-to-list 'load-path "~/path/to/Text-Game-Maker")
+(require 'tg)
+#+end_src
 
-1. 将项目目录克隆到本地：
-   #+begin_src sh
-   git clone <repository-url> ~/myLisp/Text-Game-Maker
-   #+end_src
+**启动游戏：**
 
-2. 在 Emacs 配置中添加：
-   #+begin_src elisp
-   (add-to-list 'load-path "~/myLisp/Text-Game-Maker")
-   (require 'text-game-maker)
-   #+end_src
+#+begin_src elisp
+M-x tg-start RET path/to/game.org RET
+#+end_src
 
-* 快速入门
-
-项目自带了示例游戏（地牢冒险），可以直接运行体验。
-
-** 启动示例游戏
-
-使用项目中的启动脚本：
+**运行示例游戏：**
 
 #+begin_src sh
 bash sample/play.sh
 #+end_src
 
-该脚本以终端模式启动 Emacs，加载 Text-Game-Maker 并自动进入示例游戏。
-
-手动加载方式：
+或手动：
 
 #+begin_src elisp
-M-x eval-buffer  ; 评估 sample-game.el
+(load "sample/sample-game.el")
 M-x play-sample-game
 #+end_src
 
-** 示例游戏内容
-
-示例游戏包含 6 个房间、16 种物品、11 种生物，目标是探索地牢、收集装备、击败骷髅王。
-
 * 核心概念
 
-** Room（房间）
-
-房间是游戏地图的基本单元。每个房间有：
-- =symbol=：唯一标识符
-- =description=：房间描述文本
-- =inventory=：房间中的物品列表
-- =creature=：房间中的生物列表
-- =in-trigger=：进入房间时触发的事件
-- =out-trigger=：离开房间时触发的事件
-
-** Inventory（物品）
-
-物品分两种类型：
-- =usable=（消耗品）：使用后消耗，如药水、食物。可附加属性效果
-- =wearable=（装备）：可穿戴增加属性，如剑、盾
-
-每个物品有：
-- =symbol=：唯一标识符
-- =description=：物品描述
-- =type=：物品类型（=usable= 或 =wearable=）
-- =effects=：使用/穿戴时对生物属性的影响
-- =trigger=：触发事件（=take-trigger=, =drop-trigger=, =use-trigger=, =wear-trigger=, =watch-trigger=）
-
-** Creature（生物）
-
-生物是游戏中可交互的实体。每个生物有：
-- =symbol=：唯一标识符
-- =description=：生物描述
-- =attr=：属性 alist，如 =((hp . 100) (attack . 5) (defense . 3))=
-- =inventory=：携带的物品列表
-- =equipment=：装备的物品列表
-- =watch-trigger=：查看时触发的事件
-- =death-trigger=：被击败时触发的事件
-- =exp-reward=：击败后获得的经验值（nil 时自动按属性计算）
-
-玩家自身是特殊的 Creature（=myself=），额外管理 =exp=, =level=, =bonus-points= 属性。
-
-** 触发器系统
-
-触发器是 Text-Game-Maker 的事件机制，在特定动作发生时自动调用：
-
-| 触发器            | 所属对象  | 触发时机               |
-|-------------------+-----------+------------------------|
-| =in-trigger=      | Room      | 进入房间时             |
-| =out-trigger=     | Room      | 离开房间时             |
-| =take-trigger=    | Inventory | 捡起物品时             |
-| =drop-trigger=    | Inventory | 丢弃物品时             |
-| =use-trigger=     | Inventory | 使用物品时             |
-| =wear-trigger=    | Inventory | 装备物品时             |
-| =watch-trigger=   | Creature  | 查看生物时             |
-| =watch-trigger=   | Inventory | 查看物品时             |
-| =death-trigger=   | Creature  | 生物被击败时           |
-
-* 配置文件格式
-
-所有配置文件不需要外层括号，每行一个列表，系统会自动包装为列表处理。
-
-** 房间配置（=room-config.el=）
-
-每个房间一行，格式：
+** tg-room
 
 #+begin_src elisp
-(<symbol> "<description>" (<item-symbol>...) (<creature-symbol>...))
+(cl-defstruct tg-room
+  symbol        ; 符号，唯一标识（如 'entrance）
+  name          ; 显示名称（如 "地牢入口"）
+  desc          ; 完整描述（首次进入时显示）
+  short-desc    ; 简短描述（重复进入时显示）
+  exits         ; 出口 alist，如 ((north . cell) (east . hall))
+  contents      ; 房间内物品 symbol 列表
+  creatures     ; 房间内生物 symbol 列表
+  before-handler ; 命令前回调函数
+  after-handler  ; 命令后回调函数
+  visit-count)   ; 访问次数
 #+end_src
 
-示例：
+** tg-object
 
 #+begin_src elisp
-(entrance "地牢入口。石门缓缓关闭。" (torch rusty-key) (guard))
-(hall "宏伟的大厅。" (map potion gold) (goblin bat))
+(cl-defstruct tg-object
+  symbol    ; 唯一标识（如 'iron-sword）
+  name      ; 显示名称（如 "铁剑"）
+  synonyms  ; 同义词列表，用于命令匹配
+  contents  ; 容器内物品（容器对象专用）
+  supports  ; 支撑物上的物品（支撑物对象专用）
+  props     ; 属性列表：wearable, edible, readable, container, supporter, openable, lockable, scenery, static
+  state     ; 容器状态：nil, open, closed, locked
+  key       ; 解锁所需物品 symbol
+  effects   ; 效果 alist，如 ((attack 5) (defense 3))
+  handler)  ; 自定义回调函数
 #+end_src
 
-** 地图配置（=map-config.el=）
-
-二维文本网格，每个符号对应房间的 =symbol=：
-
-#+begin_src example
-entrance  hall
-cell      corridor
-#+end_src
-
-- 相邻关系决定可移动方向（上下左右）
-- 空白位置表示无房间
-
-** 物品配置（=inventory-config.el=）
-
-每个物品一行，格式：
+** tg-creature
 
 #+begin_src elisp
-(<symbol> "<description>" <type> (<effect>...))
+(cl-defstruct tg-creature
+  symbol         ; 唯一标识
+  name           ; 显示名称
+  attr           ; 属性 alist，如 ((hp 100) (attack 5) (defense 3))
+  inventory      ; 背包物品 symbol 列表
+  equipment      ; 已装备物品 symbol 列表
+  exp-reward     ; 被击败时给予玩家的经验值
+  behaviors      ; NPC 行为规则列表
+  death-trigger  ; 死亡触发回调
+  shopkeeper     ; 是否为商人（t/nil）
+  handler)       ; 自定义回调函数
 #+end_src
 
-- =type=：=usable=（消耗品）或 =wearable=（装备）
-- =effects=：属性影响列表，如 =((hp . 30) (attack . 2))=
+=attr= 通过 =tg-creature-attr-get= 读取（alist 查询），=tg-creature-take-effect= 增量修改。=equipment= 中的对象 effects 在 =tg-creature-effective-attr= 中动态累加，计算公式：=base + equipment-bonus + buff-bonus=。
 
-示例：
+** tg-game
+
+=tg-game= 不是 struct，而是哈希表。通过 =tg-game-get= / =tg-game-put= 访问。
+
+常用键：
+
+| 键 | 类型 | 说明 |
+|---+---+---|
+| =:title= | string | 游戏标题 |
+| =:author= | string | 作者 |
+| =:location= | symbol | 当前房间 |
+| =:player= | symbol | 玩家生物 symbol |
+| =:state= | symbol | 游戏状态（playing/paused/ended） |
+| =:turns= | integer | 回合数 |
+| =:active-buffs= | list | 当前生效的 buff 列表 |
+
+** tg-dialog-state / tg-dialog-option
 
 #+begin_src elisp
-(potion "一瓶红色药水" usable ((hp . 30)))
-(iron-sword "一把铁剑" wearable ((attack . 5)))
-(shield "一面铁盾" wearable ((defense . 5)))
+(cl-defstruct tg-dialog-state
+  node-id     ; 当前对话节点 ID
+  npc-symbol  ; NPC symbol
+  greeting    ; 开场白
+  options)    ; tg-dialog-option 列表
+
+(cl-defstruct tg-dialog-option
+  text       ; 选项文本
+  response   ; NPC 回复
+  condition  ; 显示条件（当前未实现，始终 nil）
+  effects    ; 效果列表，如 ((exp 10))
+  next-node) ; 跳转的下一个节点 ID
 #+end_src
 
-** 生物配置（=creature-config.el=）
+* Org 配置格式
 
-每个生物一行，格式：
+配置文件为标准 Org 文件，包含头部关键字和 6 个 section。
+
+** 头部关键字
+
+| 关键字 | 必填 | 说明 | 示例 |
+|---+---+---+---|
+| =#+TITLE= | 是 | 游戏标题 | =#+TITLE: 地牢冒险= |
+| =#+AUTHOR= | 否 | 作者 | =#+AUTHOR: DarkSun= |
+| =#+START= | 是 | 起始房间 symbol | =#+START: entrance= |
+| =#+PLAYER= | 是 | 玩家生物 symbol | =#+PLAYER: hero= |
+
+** Rooms Section
+
+每个房间为一个二级标题，属性通过 PROPERTIES drawer 定义。
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|---+---+---+---+---|
+| =NAME= | string | 是 | - | 房间显示名称 |
+| =DESC= | string | 是 | - | 完整描述 |
+| =SHORT_DESC= | string | 否 | 同 DESC | 简短描述 |
+| =EXITS= | string | 否 | 无 | 方向=房间对，逗号分隔 |
+| =CONTENTS= | string | 否 | 无 | 物品 symbol 列表，逗号分隔 |
+| =CREATURES= | string | 否 | 无 | 生物 symbol 列表，逗号分隔 |
+
+#+begin_src org
+** entrance
+:PROPERTIES:
+:NAME: 地牢入口
+:DESC: 沉重的石门在你身后缓缓关闭。
+:SHORT_DESC: 地牢入口
+:EXITS: north=cell,east=hall
+:CONTENTS: torch,rusty-key
+:CREATURES: guard
+:END:
+#+end_src
+
+** Objects Section
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|---+---+---+---+---|
+| =NAME= | string | 是 | - | 显示名称 |
+| =SYNONYMS= | string | 否 | 无 | 同义词列表，逗号分隔 |
+| =PROPS= | string | 否 | 无 | 属性：=edible=, =wearable=, =readable=, =container=, =supporter=, =openable=, =lockable=, =scenery=, =static= |
+| =STATE= | symbol | 否 | nil | 容器状态：=open=, =closed=, =locked= |
+| =KEY= | symbol | 否 | nil | 解锁所需物品 symbol |
+| =EFFECTS= | string | 否 | 无 | 效果 alist，如 =(hp 30)= 或 =(attack 5) (defense 3)= |
+| =HANDLER= | string | 否 | nil | 自定义回调函数名 |
+
+#+begin_src org
+** iron-sword
+:PROPERTIES:
+:NAME: 铁剑
+:SYNONYMS: iron-sword
+:PROPS: wearable
+:EFFECTS: (attack 5)
+:END:
+#+end_src
+
+** Creatures Section
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|---+---+---+---+---|
+| =NAME= | string | 是 | - | 显示名称 |
+| =ATTR= | string | 是 | - | 属性键值对，空格分隔 |
+| =INVENTORY= | string | 否 | 无 | 初始背包物品 |
+| =EQUIPMENT= | string | 否 | 无 | 初始装备 |
+| =EXP_REWARD= | integer | 否 | 0 | 被击败时给予经验 |
+| =BEHAVIORS= | string | 否 | 无 | 行为规则列表 |
+| =DEATH_TRIGGER= | string | 否 | nil | 死亡触发回调 |
+| =SHOPKEEPER= | t/nil | 否 | nil | 是否为商人 |
+| =HANDLER= | string | 否 | nil | 自定义回调 |
+
+=ATTR= 格式为键值对交替：=hp 100 attack 5 defense 3=。
+
+=BEHAVIORS= 格式：规则列表，每条规则为 =(condition action args...)=。条件支持 =always=, =(player-in-room)=, =(hp-below N)=。动作支持 =attack=, =move random=, =say "text"=, =buff attr N=, =debuff attr N=。
+
+#+begin_src org
+** goblin
+:PROPERTIES:
+:NAME: 狡猾的哥布林
+:ATTR: hp 25 attack 6 defense 2
+:EXP_REWARD: 18
+:BEHAVIORS: (((hp-below 13) say "你休想活着离开！") (always attack))
+:SHOPKEEPER: nil
+:END:
+#+end_src
+
+** Dialogs Section
+
+每个对话为一个二级标题。PROPERTIES drawer 定义 NPC 和开场白，正文中每行定义一个对话选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---+---+---+---|
+| =NPC_SYMBOL= | symbol | 是 | 关联的 NPC symbol |
+| =GREETING= | string | 否 | 对话开场白 |
+
+选项格式：=问题 :: 回复=，可选追加 =→ (奖励)=。
+
+#+begin_src org
+** prisoner
+:PROPERTIES:
+:NPC_SYMBOL: prisoner
+:GREETING: 请救救我...你能帮帮我吗？
+:END:
+你是谁？ :: 我是被骷髅王关押的探险者。
+有什么线索吗？ :: 武器库里有把好剑！ → (exp 15)
+#+end_src
+
+** Shops Section
+
+| 字段 | 类型 | 必填 | 说明 |
+|---+---+---+---|
+| =NPC_SYMBOL= | symbol | 是 | 商人 NPC symbol |
+| =SELL_RATE= | float | 否 | 卖出折扣率（默认 0.5） |
+| =GOODS= | string | 是 | 商品=价格对，逗号分隔 |
+
+#+begin_src org
+** merchant-shop
+:PROPERTIES:
+:NPC_SYMBOL: goblin-merchant
+:SELL_RATE: 0.3
+:GOODS: bread=10,potion=25,rusty-key=15
+:END:
+#+end_src
+
+** Quests Section
+
+| 字段 | 类型 | 必填 | 说明 |
+|---+---+---+---|
+| =TYPE= | symbol | 是 | 任务类型：=kill=, =collect=, =explore=, =talk= |
+| =TARGET= | symbol | 是 | 目标实体 symbol |
+| =COUNT= | integer | 否 | 目标数量（默认 1） |
+| =REWARDS= | string | 否 | 奖励列表，如 =(exp 50) (item map)= |
+
+#+begin_src org
+** kill-rat
+:PROPERTIES:
+:TYPE: kill
+:TARGET: rat
+:COUNT: 1
+:REWARDS: (exp 10)
+:END:
+#+end_src
+
+** handlers.el 自动加载
+
+=tg-config-load= 在加载 =game.org= 后，自动检查同目录下的 =handlers.el= 并加载。用于配置升级表等需要 Elisp 表达式的设置：
 
 #+begin_src elisp
-(<symbol> "<description>" (<attr>...) (<inventory>...) (<equipment>...) <death-trigger> <exp-reward> <behaviors>)
+(setq tg-level-exp-table '(0 50 120 220 350 500))
+(setq tg-level-bonus-points-per-level 3)
+(setq tg-level-auto-upgrade-attrs '((hp 10)))
 #+end_src
 
-- =attr=：属性 alist，如 =((hp . 100) (attack . 5) (defense . 3))=
-- 玩家需额外包含 =exp=, =level=, =bonus-points= 属性
-- =exp-reward=：击败后获得经验值，nil 时自动按 hp+attack+defense 计算
-- =behaviors=：NPC 主动行为规则列表，nil 表示无主动行为（详见"NPC 行为系统"章节）
-
-示例：
-
-#+begin_src elisp
-(hero "勇敢的冒险者" ((hp . 100) (attack . 5) (defense . 3) (exp . 0) (level . 1) (bonus-points . 0)) () () nil 0 nil)
-(goblin "狡猾的哥布林" ((hp . 25) (attack . 6) (defense . 2)) () () nil 18
-  (((hp-below 13) say "你休想活着离开！")
-   ((always) attack)))
-#+end_src
-
-** 升级配置（=level-config.el=）
-
-#+begin_src elisp
-(level-exp-table 0 50 120 220 350 500 700 950 1300 1700)
-(level-up-bonus-points 3)
-(auto-upgrade-attrs ((hp . 10)))
-#+end_src
-
-- =level-exp-table=：每级所需累计经验值列表
-- =level-up-bonus-points=：每次升级获得的可分配技能点数
-- =auto-upgrade-attrs=：升级时自动提升的属性（不消耗技能点）
-
-** 任务配置（=quest-config.el=）
-
-每个任务一行，格式：
-
-#+begin_src elisp
-(<symbol> "<描述>" <type> <target> <count> ((reward-key . value)...) <status> "<完成提示>")
-#+end_src
-
-- =type=：任务类型（=kill= / =collect= / =explore= / =talk=）
-- =target=：目标 symbol（怪物/物品/房间/NPC）
-- =count=：目标数量
-- =rewards=：奖励列表，支持 =exp=（经验值）、=item=（物品）、=bonus-points=（技能点）、=trigger=（回调函数）
-- =status=：初始状态（加载后自动标记为 =active=）
-
-示例：
-
-#+begin_src elisp
-(kill-rats "消灭老鼠" kill rat 3 ((exp . 15)) inactive "老鼠被消灭了！")
-(find-key "找到魔法钥匙" collect key 1 ((exp . 20) (item . treasure)) inactive "你找到了钥匙！")
-(reach-hall "到达大厅" explore hall 1 ((exp . 50)) inactive "你到达了大厅！")
-(talk-guard "与守卫对话" talk guard 1 ((exp . 10)) inactive "守卫告诉了你一些信息！")
-#+end_src
-
-* 启动游戏
-
-在加载所有配置后，调用 =tg-mode= 进入游戏：
-
-#+begin_src elisp
-(let ((dir "/path/to/config/"))
-  (map-init (expand-file-name "room-config.el" dir)
-            (expand-file-name "map-config.el" dir))
-  (inventory-init (expand-file-name "inventory-config.el" dir))
-  (creatures-init (expand-file-name "creature-config.el" dir))
-  (tg-mode))
-#+end_src
-
-如有升级系统，额外调用：
-
-#+begin_src elisp
-  (level-init (expand-file-name "level-config.el" dir))
-#+end_src
-
-如有任务系统，额外调用：
-
-#+begin_src elisp
-  (quest-init (expand-file-name "quest-config.el" dir))
-#+end_src
-
-启动后会自动显示房间信息和 =[room]> 提示符，等待用户输入命令。
+完整示例见 =sample/game.org=。
 
 * 游戏命令
 
-** 命令列表
+27 个内置命令，按功能分组：
 
-| 命令                     | 说明                           |
-|--------------------------+--------------------------------|
-| =move <方向>=            | 向指定方向移动                    |
-| =watch=                  | 查看当前环境                     |
-| =watch <物品/生物>=      | 查看指定物品或生物               |
-| =take <物品>=            | 捡起房间中的物品                 |
-| =drop <物品>=            | 丢弃身上的物品                   |
-| =use <物品>=             | 使用消耗品                       |
-| =wear <物品>=            | 装备物品                         |
-| =attack <目标>=          | 攻击房间中的生物                 |
-| =status=                 | 查看自身状态                     |
-| =upgrade <属性> <点数>=  | 消耗技能点提升属性               |
-| =save <名称>=            | 保存游戏进度                     |
-| =load <名称>=            | 恢复游戏进度                     |
-| =quests=                 | 查看任务列表                     |
-| =quest <名称>=           | 查看指定任务详情                 |
-| =talk <NPC>=             | 与 NPC 对话                     |
-| =shop=                   | 查看商人商品                     |
-| =buy <物品>=             | 从商人购买物品                   |
-| =sell <物品>=            | 向商人出售物品                   |
-| =help=                   | 查看所有命令说明                 |
-| =help <命令>=            | 查看指定命令说明                 |
-| =quit=                   | 退出游戏                         |
+** 移动探索
 
-** 移动方向
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =go= | =move=, =walk= | 向指定方向移动 |
+| =look= | =l= | 查看当前房间 |
+| =examine= | =x= | 检查物品或生物 |
 
-=move= 命令支持四个方向：
+方向移动支持直接输入方向词：=n/north=, =s/south=, =e/east=, =w/west=, =ne/northeast=, =nw/northwest=, =se/southeast=, =sw/southwest=, =u/up=, =d/down=, =in=, =out=。
 
-- =move up= — 向上
-- =move right= — 向右
-- =move down= — 向下
-- =move left= — 向左
+** 物品操作
 
-** 升级命令
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =take= | =get=, =pick up= | 拾取物品（支持 =take all=） |
+| =drop= | =put down= | 丢弃物品 |
+| =place= | =put= | 放置物品到容器/支撑物 |
 
-=upgrade= 命令消耗技能点提升指定属性：
+** 容器
 
-#+begin_src example
-> upgrade attack 2
-分配 2 点到 attack，剩余技能点: 1
-#+end_src
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =open= | - | 打开容器 |
+| =close= | =shut= | 关闭容器 |
+| =unlock= | - | 使用钥匙解锁 |
 
-- 必须有足够的 =bonus-points=
-- 属性必须已存在
+** 装备与消耗
 
-* 升级系统
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =wear= | =equip= | 穿戴装备 |
+| =eat= | =consume= | 食用消耗品 |
+| =read= | - | 阅读物品 |
 
-** 经验获取
+** 背包 / 战斗 / 对话
 
-击败怪物可获得经验值。经验值有两种计算方式：
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =inventory= | =i= | 查看背包 |
+| =attack= | =hit=, =fight= | 攻击生物 |
+| =talk= | =speak= | 与 NPC 对话 |
 
-1. 显式指定：在生物配置中设置 =exp-reward= 字段
-2. 自动计算：未设置时按 =hp + attack + defense= 计算
+** 商店
 
-** 升级流程
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =shop= | - | 查看商品列表 |
+| =buy= | - | 购买物品 |
+| =sell= | - | 出售物品 |
 
-当累积经验值达到等级表阈值时自动升级：
+** 角色 / 任务
 
-1. 等级 +1
-2. 自动提升属性（如 hp +10）
-3. 获得技能点（如 3 点）
-4. 显示升级消息
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =status= | - | 查看角色状态 |
+| =upgrade= | - | 分配属性点 |
+| =quests= | - | 查看任务列表 |
+| =quest= | - | 查看任务详情 |
+| =accept= | - | 接受任务 |
 
-升级表的索引 0 对应 1→2 级所需经验，索引 1 对应 2→3 级，依此类推。达到最高等级后不再升级。
+** 系统
 
-** 技能点分配
+| 命令 | 同义词 | 说明 |
+|---+---+---|
+| =save= | - | 存档（=save filename=） |
+| =load= | - | 读档（=load filename=） |
+| =help= | =?= | 显示帮助 |
+| =quit= | =exit=, =q= | 退出游戏 |
 
-使用 =upgrade <属性> <点数>= 将技能点分配到已有属性上。合理分配技能点是通关的关键——建议先提升 =attack= 和 =defense=。
+* 扩展开发
 
-* NPC 行为系统
+** 注册自定义命令
 
-NPC 行为系统使 NPC 能够根据条件主动执行动作，不再只是被动接受玩家操作。
-
-** 触发时机
-
-NPC 在以下时机执行行为：
-1. 玩家进入新房间时（=tg-move= 中 =in-trigger= 之后）
-2. 玩家每次执行命令后（=tg-parse= 中）
-
-每个 NPC 每回合只执行第一条匹配的规则。
-
-** 条件表达式
-
-| 条件 | 说明 |
-|------+------|
-| =(always)= | 无条件满足 |
-| =(hp-below N)= | 当前 HP < N |
-| =(hp-above N)= | 当前 HP > N |
-| =(player-in-room)= | 玩家在同一房间 |
-| =(and cond1 cond2 ...)= | 逻辑与 |
-| =(or cond1 cond2 ...)= | 逻辑或 |
-| =(not cond)= | 逻辑非 |
-
-** 动作类型
-
-| 动作 | 说明 |
-|------+------|
-| =(attack)= | NPC 攻击玩家，造成 max(1, NPC-attack - player-defense) 伤害 |
-| =(say "文本")= | NPC 说话，显示对话文本 |
-| =(move random)= | NPC 随机移动到相邻房间 |
-| =(move up/right/down/left)= | NPC 向指定方向移动 |
-| =(buff attr value)= | NPC 给自己施加增益 |
-| =(debuff attr value)= | NPC 给玩家施加减益 |
-
-** 配置示例
+使用 =tg-register-action= 注册新动词：
 
 #+begin_src elisp
-(goblin "哥布林" ((hp . 25) (attack . 6) (defense . 2)) () () nil 18
-  (((hp-below 13) say "你休想活着离开！")
-   ((always) attack)))
-(golem "石像鬼" ((hp . 60) (attack . 12) (defense . 10)) () () nil 50
-  (((player-in-room) say "擅闯者，杀无赦！")
-   ((hp-below 30) buff attack 3)
-   ((always) attack)))
-(rat "老鼠" ((hp . 10) (attack . 2) (defense . 0)) () () nil 5
-  (((hp-below 5) move random)))
+(tg-register-action
+ :id 'search
+ :synonyms '("search" "investigate")
+ :handler
+ (lambda (ast game)
+   (let ((do-key (plist-get ast :do-key)))
+     (cond
+      ((not do-key)
+       (tg-message "你要搜索什么？"))
+      (t
+       (tg-message "你仔细搜索了%s..." (tg-object-name (tg-get-object do-key)))
+       ;; 随机发现隐藏物品的逻辑
+       t)))))
 #+end_src
 
-** 消息格式
+注册后玩家可以输入 =search torch= 或 =investigate torch=。需要在 =tg-register-builtins= 之后调用。
 
-NPC 行动信息通过 =tg-display= 输出到游戏 buffer：
+** handlers.el 回调
 
-- 攻击：=哥布林攻击了你，造成 3 点伤害！=
-- 说话：=哥布林说：你休想活着离开！=
-- 移动：=哥布林向北离开了。=
-- Buff：=哥布林怒吼一声，attack增强了！=
-- Debuff：=哥布林对你施放了诅咒，defense降低了！=
+在游戏配置目录的 =handlers.el= 中可定义各种回调：
 
-** 边界情况
+- **房间 before-handler** — 命令执行前调用，返回 =t= 阻止后续处理
+- **房间 after-handler** — 命令执行后调用
+- **对象 handler** — 物品被操作时调用
+- **生物 death-trigger** — 生物死亡时调用
+- **生物 handler** — 生物被交互时调用
 
-- HP <= 0 的 NPC 不行动
-- NPC 攻击导致玩家 HP <= 0 时游戏结束
-- =myself= 永远不参与行为系统
-- =behaviors= 为 =nil= 的 NPC 不行动（向后兼容）
+** 输出拦截
 
-* 存档系统
-
-存档系统支持将游戏进度保存到文件，并在之后恢复。
-
-** 保存机制
-
-=tg-save-game= 序列化以下数据：
-- 玩家状态（属性、物品、装备、行为）
-- 当前所在房间
-- 所有房间的运行时状态（物品列表、生物列表）
-- 所有生物的运行时状态
-
-** 恢复机制
-
-=tg-load-game= 恢复流程：
-1. 读取存档文件
-2. 如果设置了 =tg-config-dir=，先从配置文件重新初始化（恢复触发器等无法序列化的数据）
-3. 覆盖恢复存档中的运行时状态
-
-** 命令
-
-| 命令             | 说明                                 |
-|------------------+--------------------------------------|
-| =save <名称>=   | 保存游戏到 =saves/<名称>.sav=        |
-| =load <名称>=   | 从 =saves/<名称>.sav= 恢复游戏       |
-
-存档目录 =saves/= 相对于 =tg-config-dir=（即配置文件所在目录）。
-
-** 边界情况
-
-- 存档文件不存在时抛出异常
-- 保存时自动创建 =saves/= 目录
-- 恢复后重置 =tg-over-p= 标志，可继续游戏
-- 触发器（lambda 函数）无法序列化，通过重新加载配置文件恢复
-
-* 任务系统
-
-任务系统支持击杀、收集、探索、对话四种任务类型，游戏过程中自动追踪进度。
-
-** 任务类型
-
-| 类型     | type 值   | 触发动作              | target 含义  |
-|----------+-----------+-----------------------+--------------|
-| 击杀     | =kill=    | =tg-attack= 击败目标  | 怪物 symbol  |
-| 收集     | =collect= | =tg-take= 捡起物品    | 物品 symbol  |
-| 探索     | =explore= | =tg-move= 进入房间    | 房间 symbol  |
-| 对话     | =talk=    | =tg-watch= 查看 NPC   | NPC symbol   |
-
-** 奖励类型
-
-| 奖励 key         | 值类型  | 说明                                       |
-|------------------+---------+--------------------------------------------|
-| =exp=            | 整数    | 通过 =add-exp-to-creature= 发放经验值      |
-| =item=           | symbol  | 通过 =add-inventory-to-creature= 添加物品  |
-| =bonus-points=   | 整数    | 直接增加玩家技能点                         |
-| =trigger=        | lambda  | 任务完成时调用的回调函数                   |
-
-多个奖励可以共存于同一个任务的 rewards 列表中。
-
-** 命令
-
-| 命令            | 说明                           |
-|-----------------+--------------------------------|
-| =quests=        | 显示所有任务的进度和状态       |
-| =quest <名称>=  | 显示指定任务的详细信息         |
-
-=quests= 输出示例：
-
-#+begin_src example
-=== 任务列表 ===
-[进行中] 消灭老鼠 (1/3)
-[已完成] 找到魔法钥匙
-[未开始] 探索王座间
-#+end_src
-
-** 自动追踪
-
-任务进度通过现有 action 命令自动追踪，无需额外操作：
-
-| 动作       | 追踪调用                            |
-|------------+-------------------------------------|
-| 击败怪物   | =quest-track-kill target=            |
-| 捡起物品   | =quest-track-collect inventory=      |
-| 进入房间   | =quest-track-explore room-symbol=    |
-| 查看 NPC   | =quest-track-talk npc-symbol=        |
-
-** 进度与完成
-
-- 只有 =active= 状态的任务会被追踪
-- =progress= 达到 =count= 时自动标记为 =completed=
-- 完成时显示提示文本并发放奖励
-- 奖励只发放一次（完成后不再触发）
-
-* 商店系统
-
-商店系统允许玩家与 NPC 商人进行买卖交易。
-
-** 货币
-
-单一金币体系。全局变量 =player-gold= 记录玩家持有金币，默认 0，可在游戏初始化时设置。
-
-** 商人标记
-
-在 =creature-config.el= 中，通过第 9 个元素标记商贩（=t=）：
-
-#+begin_src example
-(goblin-merchant "哥布林商人" ((hp . 30)) () () nil 15 nil t)
-;;                                                    第9个元素 = t 表示商贩
-#+end_src
-
-** 商品配置
-
-商品配置文件 =shop-config.el= 格式：
-
-#+begin_src example
-(npc-symbol sell-rate
-  ((item-symbol . price) ...))
-#+end_src
-
-- =npc-symbol=：对应 creature-config 中的商人 symbol
-- =sell-rate=：浮点数，卖出折扣率（如 0.3 = 30% 价格回收）
-- =item-symbol . price=：物品 symbol 和购买价格（cons pair）
-
-示例：
-
-#+begin_src example
-(goblin-merchant 0.3
-  ((bread . 10) (health-potion . 25) (iron-sword . 50)))
-(blacksmith 0.6
-  ((iron-shield . 40) (steel-sword . 80)))
-#+end_src
-
-** 命令
-
-| 命令            | 说明                                   |
-|-----------------+----------------------------------------|
-| =shop=          | 显示当前房间商人的商品列表和价格        |
-| =buy <物品>=    | 从商人购买物品，扣除金币                |
-| =sell <物品>=   | 向商人出售物品，获得 price × sell-rate 金币 |
-
-** 交易逻辑
-
-- =buy=：检查商人存在、商品在售、金币足够 → 扣除金币，物品加入背包，从商品列表移除
-- =sell=：检查商人存在、物品在背包 → 按 基础价格 × sell-rate 计算卖出价（最低 1 金币），物品从背包移除，加入商人商品列表
-- 卖出不在商人原商品列表中的物品时，使用默认基础价格 5
-
-** 初始化
+通过 =tg-message-hook= 拦截游戏输出：
 
 #+begin_src elisp
-(shop-init (expand-file-name "shop-config.el" config-dir))
-(setq player-gold 20)  ; 设置初始金币
+(add-hook 'tg-message-hook
+          (lambda (text)
+            ;; 记录游戏日志
+            (with-current-buffer "*game-log*"
+              (insert text))))
 #+end_src
 
-* API 参考
+** 内置命令注册流程
 
-** =text-game-maker.el= — 主入口
+=tg-register-builtins= 注册 27 个内置命令。它由 =tg-init= 自动调用。自定义命令应在 =tg-init= 之后注册。
 
-| 函数/变量       | 说明                                    |
-|-----------------+-----------------------------------------|
-| =display-fn=    | 显示函数，默认 =tg-mprinc=（输出到 buffer） |
-| =tg-display=    | 向游戏 buffer 输出文本                    |
-| =file-content=  | 读取文件内容                              |
+* 模块参考
 
-加载 =text-game-maker= 会自动加载所有子模块。
+按依赖顺序排列。每个模块列出文件名、核心类型和公共函数。
 
-** =room-maker.el= — 房间与地图
+** tg-registry.el
 
-| 函数/变量               | 说明                                    |
-|--------------------------+-----------------------------------------|
-| =Room=                   | 房间结构体                                |
-| =rooms-alist=            | 所有房间的 alist                          |
-| =room-map=               | 二维地图                                  |
-| =current-room=           | 当前所在房间                              |
-| =map-init=               | 加载房间配置和地图配置                     |
-| =get-room-by-symbol=     | 根据 symbol 获取房间对象                   |
-| =beyond-rooms=           | 获取指定方向可到达的房间                    |
-| =read-from-whole-string= | 从字符串读取 Emacs Lisp 数据（工具函数）    |
+全局注册表。零依赖。
 
-Room 结构体：
+| 函数 | 说明 |
+|---+---|
+| =tg-register-room (sym r)= | 注册房间 |
+| =tg-register-object (sym o)= | 注册物品 |
+| =tg-register-creature (sym c)= | 注册生物 |
+| =tg-register-action (sym a)= | 注册动作 |
+| =tg-register-dialog (sym d)= | 注册对话 |
+| =tg-register-shop (sym s)= | 注册商店 |
+| =tg-register-quest (sym q)= | 注册任务 |
+| =tg-get-room/object/creature/action/dialog/shop/quest (sym)= | 按 symbol 查询 |
+| =tg-registry-clear ()= | 清空所有注册表 |
 
-| Slot           | 说明                     |
-|----------------+--------------------------|
-| =symbol=       | 房间标识符                |
-| =description=  | 房间描述                  |
-| =inventory=    | 物品列表                  |
-| =creature=     | 生物列表                  |
-| =in-trigger=   | 进入触发                  |
-| =out-trigger=  | 离开触发                  |
-| =watch-trigger=| 查看触发                  |
-
-** =inventory-maker.el= — 物品系统
-
-| 函数/变量                    | 说明                       |
-|------------------------------+----------------------------|
-| =Inventory=                  | 物品结构体                  |
-| =inventorys-alist=           | 所有物品的 alist            |
-| =inventory-init=             | 加载物品配置                |
-| =get-inventory-by-symbol=    | 根据 symbol 获取物品对象    |
-| =inventory-usable-p=         | 判断是否为消耗品            |
-| =inventory-wearable-p=       | 判断是否为装备              |
-| =inventory-exist-in-room-p=  | 检查物品是否在房间中        |
-| =add-inventory-to-room=      | 向房间添加物品              |
-| =remove-inventory-from-room= | 从房间移除物品              |
-
-Inventory 结构体：
-
-| Slot              | 说明                     |
-|-------------------+--------------------------|
-| =symbol=          | 物品标识符                |
-| =description=     | 物品描述                  |
-| =type=            | 类型列表（=usable= / =wearable=） |
-| =effects=         | 效果 alist                |
-| =take-trigger=    | 捡起触发                  |
-| =drop-trigger=    | 丢弃触发                  |
-| =use-trigger=     | 使用触发                  |
-| =wear-trigger=    | 装备触发                  |
-| =watch-trigger=   | 查看触发                  |
-
-** =creature-maker.el= — 生物系统
-
-| 函数/变量                         | 说明                       |
-|-----------------------------------+----------------------------|
-| =Creature=                        | 生物结构体                  |
-| =creatures-alist=                 | 所有生物的 alist            |
-| =myself=                          | 玩家自己                    |
-| =creatures-init=                  | 加载生物配置                |
-| =get-creature-by-symbol=          | 根据 symbol 获取生物对象    |
-| =creature-exist-in-room-p=        | 检查生物是否在房间中        |
-| =take-effect-to-creature=         | 对生物施加属性效果          |
-| =take-effects-to-creature=        | 批量施加效果                |
-| =add-inventory-to-creature=       | 给生物添加物品              |
-| =remove-inventory-from-creature=  | 从生物移除物品              |
-| =add-equipment-to-creature=       | 给生物装备物品              |
-| =remove-equipment-from-creature=  | 从生物卸下装备              |
-| =inventory-exist-in-creature-p=   | 检查生物是否携带某物品      |
-| =equipment-exist-in-creature-p=   | 检查生物是否装备某物品      |
-| =remove-creature-from-room=       | 从房间移除生物              |
-
-Creature 结构体：
-
-| Slot              | 说明                     |
-|-------------------+--------------------------|
-| =symbol=          | 生物标识符                |
-| =description=     | 生物描述                  |
-| =occupation=      | 职业                      |
-| =attr=            | 属性 alist                |
-| =inventory=       | 携带物品列表              |
-| =equipment=       | 装备物品列表              |
-| =watch-trigger=   | 查看触发                  |
-| =death-trigger=   | 击败触发                  |
-| =exp-reward=      | 经验奖励                  |
-| =behaviors=       | NPC 主动行为规则列表      |
-| =shopkeeper=      | 是否为商人（=t= / =nil=） |
-
-** =level-system.el= — 升级系统
-
-| 函数/变量                        | 说明                       |
-|----------------------------------+----------------------------|
-| =level-exp-table=                | 等级经验表                  |
-| =level-up-bonus-points=          | 每次升级获得技能点数        |
-| =auto-upgrade-attrs=             | 自动提升属性列表            |
-| =level-init=                     | 加载升级配置                |
-| =add-exp-to-creature=            | 给生物加经验并处理升级      |
-| =get-exp-reward=                 | 获取生物的经验奖励          |
-
-** =npc-behavior.el= — NPC 行为系统
-
-| 函数/变量                        | 说明                           |
-|----------------------------------+--------------------------------|
-| =npc-run-behaviors=              | 遍历当前房间所有 NPC，执行行为 |
-| =npc-evaluate-condition=         | 评估条件表达式                 |
-| =npc-execute-action=             | 执行一条 NPC 动作              |
-| =npc-attack-player=              | NPC 攻击玩家                   |
-| =npc-say=                        | NPC 说话                       |
-| =npc-move=                       | NPC 移动                       |
-| =npc-apply-buff=                 | NPC 给自己加增益               |
-| =npc-apply-debuff=               | NPC 给玩家施加减益             |
-
-** =save-system.el= — 存档系统
-
-| 函数/变量                  | 说明                                   |
-|----------------------------+----------------------------------------|
-| =tg-save-game=             | 保存游戏到指定文件路径                 |
-| =tg-load-game=             | 从指定文件路径恢复游戏                 |
-| =tg-serialize-creature=    | 序列化生物为 alist                     |
-| =tg-serialize-room=        | 序列化房间运行时状态                   |
-| =tg-restore-game-state=    | 从 alist 恢复游戏状态                  |
-
-** =quest-system.el= — 任务系统
-
-| 函数/变量                  | 说明                                   |
-|----------------------------+----------------------------------------|
-| =Quest=                    | 任务结构体                              |
-| =quests-alist=             | 所有任务的 alist                        |
-| =quest-init=               | 从配置文件加载任务                      |
-| =quest-track-kill=         | 追踪击杀任务进度                        |
-| =quest-track-collect=      | 追踪收集任务进度                        |
-| =quest-track-explore=      | 追踪探索任务进度                        |
-| =quest-track-talk=         | 追踪对话任务进度                        |
-| =quest-apply-rewards=      | 发放任务奖励                            |
-| =quest-update-progress=    | 更新进度并检测完成                      |
-| =quest-list-active=        | 列出所有活跃任务                        |
-| =quest-list-all=           | 列出所有任务                            |
-
-Quest 结构体：
-
-| Slot                  | 说明                       |
-|-----------------------+----------------------------|
-| =symbol=              | 任务标识符                  |
-| =description=         | 任务描述                    |
-| =type=                | 任务类型                    |
-| =target=              | 目标 symbol                 |
-| =count=               | 目标数量                    |
-| =progress=            | 当前进度                    |
-| =rewards=             | 奖励列表                    |
-| =status=              | 任务状态                    |
-| =description-complete=| 完成提示文本                |
-
-** =shop-system.el= — 商店系统
-
-| 函数/变量           | 说明                                       |
-|---------------------+--------------------------------------------|
-| =player-gold=       | 玩家持有金币                                |
-| =shop-alist=        | 商品列表缓存                                |
-| =shop-init=         | 从配置文件加载商品                          |
-| =shop-get-shopkeeper= | 获取当前房间的商人 Creature              |
-| =shop-get-goods=    | 获取商人商品列表                            |
-| =shop-get-sell-rate= | 获取商人卖出折扣率                         |
-| =shop-get-item-price= | 获取商人商品价格                           |
-| =shop-remove-item=  | 从商人商品列表移除物品                      |
-| =shop-add-item=     | 向商人商品列表添加物品                      |
-
-** =tg-mode.el= — 游戏主模式
-
-| 函数/变量               | 说明                                    |
-|--------------------------+-----------------------------------------|
-| =tg-mode=                | 游戏 major mode                          |
-| =tg-parse=               | 命令解析函数（绑定到 RET 键）             |
-| =tg-messages=            | 游戏消息循环                              |
-| =tg-mprinc=              | 向 buffer 输出文本                        |
-| =tg-prompt-string=       | 返回当前提示符字符串（=[ROOM]>=）         |
-| =tg-eldoc-function=      | eldoc 支持函数（输入时显示命令说明）       |
-| =tg-over-p=              | 游戏是否结束                              |
-| =tg-fix-screen=          | 保持屏幕滚动位置                          |
-
-=major-mode= 特性：
-- 读取提示符 =[symbol]>= 或 =>= 后的命令
-- 提示符文本不可编辑（=read-only= 属性）
-- 支持 eldoc 模式，输入命令时显示文档
-- 按 RET 执行命令
-
-** =action.el= — 游戏命令
-
-| 函数/变量               | 说明                                    |
-|--------------------------+-----------------------------------------|
-| =tg-valid-actions=       | 已注册的所有命令列表                      |
-| =tg-defaction=           | 定义新命令的宏（见"扩展"章节）            |
-
-内置命令：=tg-move=, =tg-watch=, =tg-take=, =tg-drop=, =tg-use=, =tg-wear=, =tg-attack=, =tg-upgrade=, =tg-status=, =tg-save=, =tg-load=, =tg-quests=, =tg-quest=, =tg-help=, =tg-quit=
-
-** =tg-config-generator.el= — 配置文件生成器
-
-| 函数/模式                       | 说明                           |
-|---------------------------------+--------------------------------|
-| =tg-gen-config-mode=            | 配置文件编辑 major mode          |
-| =tg-gen-preview-room=           | 预览房间配置                    |
-| =tg-gen-preview-inventory=      | 预览物品配置                    |
-| =tg-gen-preview-creature=       | 预览生物配置                    |
-| =tg-gen-preview-map=            | 预览地图配置                    |
-| =tg-gen-config-submit=          | 提交并保存配置                  |
-
-配置块格式：用 =##= 分隔，每块包含 =key: value= 对。
-
-* 扩展
-
-** 使用 =tg-defaction= 定义新命令
-
-=tg-defaction= 宏是扩展游戏命令的标准方式，同时注册命令到 =tg-valid-actions= 列表。
-
-语法：
+** tg-object.el
 
 #+begin_src elisp
-(tg-defaction tg-<命令名> (<参数>...)
-  "<使用说明>"
-   ;; 命令代码
-   )
+(cl-defstruct tg-object symbol name synonyms contents supports props state key effects handler)
 #+end_src
 
-参数说明：
-- 第一个参数是 =interactive= 规范中的字符串参数
-- 返回值会被 =tg-display= 输出到游戏 buffer
-- 使用 =(throw 'exception "错误信息")= 返回错误
+| 函数 | 说明 |
+|---+---|
+| =tg-object-has-prop-p (object prop)= | 检查属性 |
+| =tg-object-wearable-p= / =edible-p= / =container-p= / =supporter-p= | 属性谓词 |
+| =tg-object-set-state (object state)= | 设置容器状态 |
+| =tg-object-find-in-room (room sym)= | 在房间中查找物品 |
+| =tg-object-find-in-inventory (inv sym)= | 在背包中查找物品 |
 
-示例——添加搜索命令：
+** tg-creature.el
 
 #+begin_src elisp
-(tg-defaction tg-search (&optional target)
-  "使用'search'搜索房间
-使用'search <物品>'搜索指定物品"
-  (if target
-      (format "你仔细搜索了房间，但没有找到%s" target)
-    "你搜索了房间，但没有发现任何特别的东西"))
+(cl-defstruct tg-creature symbol name attr inventory equipment exp-reward behaviors death-trigger shopkeeper handler)
 #+end_src
 
-** 触发器的使用
+| 函数 | 说明 |
+|---+---|
+| =tg-creature-attr-get (creature key)= | 读取属性 |
+| =tg-creature-dead-p (creature)= | 判断死亡 |
+| =tg-creature-take-effect (creature effect)= | 增量修改属性 |
+| =tg-creature-add/remove-item= | 背包操作 |
+| =tg-creature-effective-attr (creature key buffs)= | 计算有效属性（base+equip+buff） |
 
-触发器是 lambda 函数，在配置中的 =trigger= 字段设置。
+** tg-game.el
 
-使用闭包访问外部变量：
+=tg-game= 为哈希表，非 struct。
+
+| 函数 | 说明 |
+|---+---|
+| =tg-new-game (title author)= | 创建新游戏 |
+| =tg-game-get (game key)= | 读取游戏状态 |
+| =tg-game-put (game key value)= | 设置游戏状态 |
+| =tg-game-incf (game key)= | 自增数值 |
+| =tg-player (game)= | 获取玩家 creature |
+
+** tg-room.el
 
 #+begin_src elisp
-;; 物品拾起触发：获得钥匙时提升攻击力
-(let ((my-key (make-Inventory :symbol 'magic-key :description "魔法钥匙"
-                 :type '(usable) :effects '((attack . 3))
-                 :take-trigger (lambda ()
-                                 (tg-display "你捡起了魔法钥匙，感到一股力量涌入！")))))
-  ...)
+(cl-defstruct tg-room symbol name desc short-desc exits contents creatures before-handler after-handler visit-count)
 #+end_src
 
-* 文件结构
+| 函数 | 说明 |
+|---+---|
+| =tg-room-exit (room direction)= | 查询出口 |
+| =tg-room-visit (room)= | 访问计数+1 |
+| =tg-room-describe (room)= | 描述房间 |
+| =tg-room-all-visible-objects (room)= | 所有可见物品（含容器内） |
+| =tg-room-add/remove-object= | 物品进出房间 |
+| =tg-room-add/remove-creature= | 生物进出房间 |
 
-| 文件                       | 说明                         |
-|----------------------------+------------------------------|
-| =text-game-maker.el=       | 主入口文件，加载所有模块      |
-| =tg-mode.el=               | 游戏主模式，命令解析与界面    |
-| =room-maker.el=            | 房间与地图系统               |
-| =inventory-maker.el=       | 物品系统                     |
-| =creature-maker.el=        | 生物系统                     |
-| =action.el=                | 游戏命令定义                 |
-| =level-system.el=          | 升级系统                     |
-| =npc-behavior.el=          | NPC 主动行为系统             |
-| =save-system.el=           | 存档系统                     |
-| =quest-system.el=          | 任务系统                     |
-| =dialog-system.el=         | 对话树系统                   |
-| =shop-system.el=           | 商店/交易系统                |
-| =tg-config-generator.el=   | 配置文件生成器               |
-| =sample/=                  | 示例游戏目录                 |
-| =test/=                    | ERT 单元测试目录             |
-| =run-tests.sh=             | 测试运行脚本                 |
-
-* 测试
-
-项目包含 270+ 个 ERT 单元测试，覆盖所有核心模块。
-
-运行测试：
-
-#+begin_src sh
-bash run-tests.sh
-#+end_src
-
-或直接使用 Emacs：
-
-#+begin_src sh
-emacs --batch -L . -L test \
-      --eval "(ert-run-tests-batch-and-exit t)"
-#+end_src
-
-测试文件说明：
-
-| 测试文件                         | 测试数量 | 覆盖内容                           |
-|---------------------------------+----------+------------------------------------|
-| =test-text-game-maker.el=       |        5 | =file-content=, =tg-display=       |
-| =test-room-maker.el=            |       22 | Room 类, 地图操作, =beyond-rooms=  |
-| =test-inventory-maker.el=       |       16 | Inventory 类, 类型检查             |
-| =test-creature-maker.el=        |       26 | Creature 类, 效果系统, 装备操作, behaviors slot |
-| =test-action.el=                |       37 | =tg-defaction= 宏, 全部游戏命令, NPC 行为集成, 任务集成 |
-| =test-tg-mode.el=               |       18 | =tg-mprinc=, =tg-mode=, =tg-parse=, =tg-messages=, =display-fn=, eldoc |
-| =test-tg-config-generator.el=   |       24 | 配置解析与生成                     |
-| =test-level-system.el=          |        9 | 等级加载, 经验计算, 升级触发       |
-| =test-npc-behavior.el=          |       20 | 条件评估, 动作执行, 行为运行器     |
-| =test-save-system.el=          |        8 | 序列化, 保存/恢复, 往返测试        |
-| =test-quest-system.el=          |       14 | 任务加载, 进度追踪, 奖励发放       |
-| =test-dialog-system.el=         |       18 | 对话加载, 条件评估, 选项处理       |
-| =test-shop-system.el=           |       12 | 商品加载, 商人查找, 买卖逻辑       |
-
-* 常见问题
-
-** 启动时 buffer 中没有输出？
-
-确认 =display-fn= 没有被修改为 =message=。默认值是 =#'tg-mprinc=，输出到游戏 buffer。
-
-** 无法在提示符后输入？
-
-检查 =[ROOM]>= 提示符是否被删除。提示符有 =read-only= 属性保护，不应被删除。
-如果仍无法输入，确认 =rear-nonsticky= 属性设置正确。
-
-** 升级后技能点没有增加？
-
-确认 =creature-config.el= 中玩家（=hero=）的 =attr= 包含 =(bonus-points . 0)=。
-升级系统只在有 =bonus-points= 属性的生物上增加技能点。
-
-** =load-file-name= 错误？
-
-通过 =--eval= 启动时 =load-file-name= 为 nil。捕获路径的推荐方式：
+** tg-action.el
 
 #+begin_src elisp
-(defvar my-game-dir nil)
-(setq my-game-dir (file-name-directory (or load-file-name buffer-file-name)))
+(cl-defstruct tg-action id synonyms handler)
 #+end_src
 
-* 更新日志
+| 函数 | 说明 |
+|---+---|
+| =tg-register-action (&rest args)= | 注册动作（=:id= =:synonyms= =:handler=） |
+| =tg-find-action (word)= | 按词查找动作 ID |
+| =tg-register-builtins ()= | 注册 27 个内置命令 |
 
-** [2026-05-02] 商店系统与 Readline 模式
+** tg-parser.el
 
-- 新增 =shop-system.el= 商店/交易模块
-- Creature 结构体新增 =shopkeeper= 字段
-- 新增 =shop= / =buy= / =sell= 命令
-- 支持 NPC 商人、金币货币、可配置卖出折扣率
-- tg-mode 新增命令历史浏览（up/down, M-p/M-n）
-- tg-mode 新增 Tab 补全命令名
+| 函数 | 说明 |
+|---+---|
+| =tg-parse (input)= | 解析玩家输入，返回 AST |
+| =tg-build-vocabulary (game)= | 构建当前词汇表 |
 
-** [2026-05-01] 存档系统与任务系统
+** tg-commands.el
 
-- 新增 =save-system.el= 存档模块
-- 支持 =save= / =load= 命令保存和恢复游戏进度
-- 序列化玩家、房间、生物的运行时状态
-- 恢复时自动从配置文件重新初始化以还原触发器
-- 新增 8 个存档系统测试
+| 函数 | 说明 |
+|---+---|
+| =tg-message (format &rest args)= | 输出文本 |
+| =tg-dispatch (ast game)= | 9 步 handler chain dispatch |
 
-- 新增 =quest-system.el= 任务模块
-- 支持 4 种任务类型（击杀、收集、探索、对话）
-- 支持 4 种奖励类型（经验值、物品、技能点、回调触发器）
-- 任务进度通过现有 action 命令自动追踪
-- 新增 =quests= / =quest= 命令查看任务列表和详情
-- 示例游戏添加了 6 个任务配置
-- 新增 14 个任务系统测试 + 2 个集成测试
+** tg-dialog.el
 
-** [2026-05-01] NPC 行为系统
+#+begin_src elisp
+(cl-defstruct tg-dialog-state node-id npc-symbol greeting options)
+(cl-defstruct tg-dialog-option text response condition effects next-node)
+#+end_src
 
-- 新增 =npc-behavior.el= NPC 主动行为模块
-- Creature 新增 =behaviors= 字段
-- 支持 7 种条件表达式（=always=, =hp-below=, =hp-above=, =player-in-room=, =and=, =or=, =not=）
-- 支持 5 种动作类型（=attack=, =say=, =move=, =buff=, =debuff=）
-- NPC 在玩家进入房间和每次行动后自动执行行为
-- 每回合每个 NPC 只执行第一条匹配的规则
-- 示例游戏为所有 NPC 添加了行为配置
-- 新增 20 个 NPC 行为系统测试
+| 函数 | 说明 |
+|---+---|
+| =tg-dialog-start (npc-sym)= | 开始对话 |
+| =tg-dialog-handle-choice (choice)= | 处理玩家选择 |
+| =tg-dialog-apply-effects (effects)= | 应用奖励 |
 
-** [2026-05-01] 升级系统
+** tg-npc.el
 
-- 新增 =level-system.el= 升级模块
-- 新增升级配置文件 =level-config.el=
-- Creature 新增 =exp-reward= 字段
-- 新增 =attack= 击败后获得经验值机制
-- 新增 =upgrade= 技能点分配命令
-- 新增 9 个升级系统测试
+| 函数 | 说明 |
+|---+---|
+| =tg-npc-eval-condition (creature condition)= | 评估行为条件 |
+| =tg-npc-execute-action (creature action)= | 执行行为动作 |
+| =tg-npc-run-behaviors (game)= | 运行当前房间所有 NPC 行为 |
 
-** [2026-04-30] Bug 修复与测试覆盖
+** tg-quest.el
 
-- 新增 95 个 ERT 单元测试，覆盖所有模块
-- 修复 =remove-equipment-from-creature= 修改错误 slot 的 bug
-- 修复 =tg-wear= 中 =creature= 变量未绑定的 bug
-- 修复 =tg-wear= 检查 equipment 而非 inventory 的 bug
-- 修复 =tg-wear= 错误信息"不可使用"应为"不可装备"
-- 修复 =tg-wear= 触发 =use-trigger= 而非 =wear-trigger= 的 bug
-- 修复 =tg-watch= 无法查看 creature 的 bug
-- 修复所有模块缺少的 =require= 依赖声明
-- 移除 =action.el= 中硬编码的 load-path
+#+begin_src elisp
+(cl-defstruct tg-quest symbol type target count progress status rewards)
+#+end_src
+
+| 函数 | 说明 |
+|---+---|
+| =tg-quest-activate (quest)= | 激活任务（inactive→active） |
+| =tg-track-quest (type target)= | 追踪任务进度 |
+
+** tg-shop.el
+
+#+begin_src elisp
+(cl-defstruct tg-shop npc-symbol sell-rate goods)
+#+end_src
+
+| 函数 | 说明 |
+|---+---|
+| =tg-shop-buy (item shop player)= | 购买 |
+| =tg-shop-sell (item shop player)= | 出售 |
+
+** tg-level.el
+
+| 函数 | 说明 |
+|---+---|
+| =tg-level-check (creature)= | 检查升级 |
+| =tg-level-upgrade (creature attr delta)= | 分配属性点 |
+
+| 变量 | 说明 |
+|---+---|
+| =tg-level-exp-table= | 升级经验表 |
+| =tg-level-bonus-points-per-level= | 每级属性点 |
+| =tg-level-auto-upgrade-attrs= | 每级自动提升属性 |
+
+** tg-save.el
+
+| 函数 | 说明 |
+|---+---|
+| =tg-save-game (file-path)= | 保存游戏 |
+| =tg-load-game (file-path config-dir)= | 加载游戏 |
+
+** tg-config.el
+
+| 函数 | 说明 |
+|---+---|
+| =tg-config-load (org-file)= | 加载 Org 配置并注册所有实体 |
+
+** tg-config-gen.el
+
+| 函数 | 说明 |
+|---+---|
+| =tg-gen-game (title author start)= | 生成完整游戏模板 |
+| =tg-gen-room/object/creature/dialog/shop/quest= | 生成各类型配置 |
+| =tg-validate-config ()= | 交叉验证已注册实体 |
+
+** tg-mode.el
+
+| 函数 | 说明 |
+|---+---|
+| =tg-start-game (org-file)= | 启动游戏 UI |
+| =tg-send-command ()= | 处理输入命令 |
+| =tg-complete-command ()= | TAB 补全 |
+| =tg-history-prev/next= | 命令历史翻页 |
+
+** tg.el
+
+入口模块。
+
+| 函数 | 说明 |
+|---+---|
+| =tg-init (org-file)= | 加载配置并初始化 |
+| =tg-start (org-file)= | 加载配置并启动游戏 UI |
+
+* 已知限制
+
+| 缺口 | 说明 | 所在代码 |
+|---+---+---|
+| 对话选项条件 | =tg-config--parse-dialog-option= 未解析条件字段，所有选项始终可见 | =tg-config.el= |
+| Level Org 配置段 | =tg-config-load= 不处理 Level section，需通过 =handlers.el= 设置 defvar | =tg-config.el= |
+| 任务描述/完成文本 | =tg-quest= struct 无 =description= / =completion= 字段 | =tg-quest.el= |
+| Object 容器初始化 | =tg-config--parse-object-section= 硬编码 =:contents nil :supports nil= | =tg-config.el= |
