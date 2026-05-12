@@ -156,15 +156,15 @@ M-x play-sample-game
 | =CREATURES= | string | 否 | 无 | 生物 symbol 列表，逗号分隔 |
 
 #+begin_src org
-** entrance
-:PROPERTIES:
-:NAME: 地牢入口
-:DESC: 沉重的石门在你身后缓缓关闭。
-:SHORT_DESC: 地牢入口
-:EXITS: north=cell,east=hall
-:CONTENTS: torch,rusty-key
-:CREATURES: guard
-:END:
+  ,** entrance
+  :PROPERTIES:
+  :NAME: 地牢入口
+  :DESC: 沉重的石门在你身后缓缓关闭。
+  :SHORT_DESC: 地牢入口
+  :EXITS: north=cell,east=hall
+  :CONTENTS: torch,rusty-key
+  :CREATURES: guard
+  :END:
 #+end_src
 
 ** Objects Section
@@ -177,10 +177,12 @@ M-x play-sample-game
 | =STATE= | symbol | 否 | nil | 容器状态：=open=, =closed=, =locked= |
 | =KEY= | symbol | 否 | nil | 解锁所需物品 symbol |
 | =EFFECTS= | string | 否 | 无 | 效果 alist，如 =(hp 30)= 或 =(attack 5) (defense 3)= |
+| =CONTENTS= | string | 否 | 无 | 容器内初始物品，逗号分隔 |
+| =SUPPORTS= | string | 否 | 无 | 支撑物上初始物品，逗号分隔 |
 | =HANDLER= | string | 否 | nil | 自定义回调函数名 |
 
 #+begin_src org
-** iron-sword
+,** iron-sword
 :PROPERTIES:
 :NAME: 铁剑
 :SYNONYMS: iron-sword
@@ -205,10 +207,10 @@ M-x play-sample-game
 
 =ATTR= 格式为键值对交替：=hp 100 attack 5 defense 3=。
 
-=BEHAVIORS= 格式：规则列表，每条规则为 =(condition action args...)=。条件支持 =always=, =(player-in-room)=, =(hp-below N)=。动作支持 =attack=, =move random=, =say "text"=, =buff attr N=, =debuff attr N=。
+=BEHAVIORS= 格式：规则列表，每条规则为 =(condition action args...)=。条件支持 =always=, =(player-in-room)=, =(hp-below N)=。动作支持 =attack=, =move random=, =say "text"=, =buff attr N=, =debuff attr N= 。
 
 #+begin_src org
-** goblin
+,** goblin
 :PROPERTIES:
 :NAME: 狡猾的哥布林
 :ATTR: hp 25 attack 6 defense 2
@@ -227,16 +229,17 @@ M-x play-sample-game
 | =NPC_SYMBOL= | symbol | 是 | 关联的 NPC symbol |
 | =GREETING= | string | 否 | 对话开场白 |
 
-选项格式：=问题 :: 回复=，可选追加 =→ (奖励)=。
+选项格式：=[条件] 问题 :: 回复=，可选追加 =→ (奖励)=。条件方括号可选，支持 =has-item=, =quest-active=, =quest-completed= 及 =and=, =or=, =not= 组合。
 
 #+begin_src org
-** prisoner
+,** prisoner
 :PROPERTIES:
 :NPC_SYMBOL: prisoner
 :GREETING: 请救救我...你能帮帮我吗？
 :END:
 你是谁？ :: 我是被骷髅王关押的探险者。
 有什么线索吗？ :: 武器库里有把好剑！ → (exp 15)
+[(has-item bread)] 给你点面包 :: 谢谢你！ → (exp 10)
 #+end_src
 
 ** Shops Section
@@ -248,7 +251,7 @@ M-x play-sample-game
 | =GOODS= | string | 是 | 商品=价格对，逗号分隔 |
 
 #+begin_src org
-** merchant-shop
+,** merchant-shop
 :PROPERTIES:
 :NPC_SYMBOL: goblin-merchant
 :SELL_RATE: 0.3
@@ -263,27 +266,44 @@ M-x play-sample-game
 | =TYPE= | symbol | 是 | 任务类型：=kill=, =collect=, =explore=, =talk= |
 | =TARGET= | symbol | 是 | 目标实体 symbol |
 | =COUNT= | integer | 否 | 目标数量（默认 1） |
+| =DESCRIPTION= | string | 否 | 任务描述文本 |
+| =COMPLETION= | string | 否 | 任务完成时显示文本 |
 | =REWARDS= | string | 否 | 奖励列表，如 =(exp 50) (item map)= |
 
 #+begin_src org
-** kill-rat
+,** kill-rat
 :PROPERTIES:
 :TYPE: kill
 :TARGET: rat
 :COUNT: 1
+:DESCRIPTION: 消灭地牢里的老鼠
+:COMPLETION: 你消灭了那只老鼠！
 :REWARDS: (exp 10)
 :END:
 #+end_src
 
+** Level Section
+
+| 字段 | 类型 | 必填 | 说明 |
+|---+---+---+---|
+| =EXP_TABLE= | 逗号分隔整数 | 否 | 升级经验表（覆盖默认值） |
+| =BONUS_POINTS= | integer | 否 | 每级自由属性点（覆盖默认值） |
+| =AUTO_UPGRADE= | 属性键值对 | 否 | 每级自动提升属性（覆盖默认值） |
+
+#+begin_src org
+,* Level
+:PROPERTIES:
+:EXP_TABLE: 0,50,120,220,350,500,700,950,1300,1700
+:BONUS_POINTS: 3
+:AUTO_UPGRADE: hp 10
+:END:
+#+end_src
+
+三个字段全部可选。缺失时保留 =tg-level.el= 中的 defvar 默认值。
+
 ** handlers.el 自动加载
 
-=tg-config-load= 在加载 =game.org= 后，自动检查同目录下的 =handlers.el= 并加载。用于配置升级表等需要 Elisp 表达式的设置：
-
-#+begin_src elisp
-(setq tg-level-exp-table '(0 50 120 220 350 500))
-(setq tg-level-bonus-points-per-level 3)
-(setq tg-level-auto-upgrade-attrs '((hp 10)))
-#+end_src
+=tg-config-load= 在加载 =game.org= 后，自动检查同目录下的 =handlers.el= 并加载。用于编写自定义 Elisp 回调函数。
 
 完整示例见 =sample/game.org=。
 
@@ -608,9 +628,4 @@ M-x play-sample-game
 
 * 已知限制
 
-| 缺口 | 说明 | 所在代码 |
-|---+---+---|
-| 对话选项条件 | =tg-config--parse-dialog-option= 未解析条件字段，所有选项始终可见 | =tg-config.el= |
-| Level Org 配置段 | =tg-config-load= 不处理 Level section，需通过 =handlers.el= 设置 defvar | =tg-config.el= |
-| 任务描述/完成文本 | =tg-quest= struct 无 =description= / =completion= 字段 | =tg-quest.el= |
-| Object 容器初始化 | =tg-config--parse-object-section= 硬编码 =:contents nil :supports nil= | =tg-config.el= |
+暂无已知缺口。

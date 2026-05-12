@@ -88,13 +88,4 @@ emacs -batch -L . \
   -f ert-run-tests-batch-and-exit
 ```
 
-258 个 ERT 测试。
-
-## TODO
-
-| 缺口 | 说明 |
-|------|------|
-| 对话选项条件 | `tg-config--parse-dialog-option` 未解析条件字段，所有选项始终可见 |
-| Level Org 配置段 | `tg-config-load` 不处理 Level section，需通过 `handlers.el` 配置 |
-| 任务描述/完成文本 | `tg-quest` struct 无 description/completion 字段 |
-| Object 容器初始化 | `tg-config--parse-object-section` 硬编码 `:contents nil :supports nil` |
+266 个 ERT 测试。
