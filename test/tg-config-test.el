@@ -607,5 +607,22 @@ More content to ignore.
     (should (equal (tg-dialog-option-effects option) '((gold -10) (item potion))))
     (should (eq (tg-dialog-option-next-node option) 'done))))
 
+(ert-deftest test-tg-config-parse-dialog-option-with-condition ()
+  "测试解析带条件的对话选项。"
+  (let ((opt (tg-config--parse-dialog-option "[(has-item bread)] 给你面包 :: 谢谢！ → (exp 10)")))
+    (should opt)
+    (should (equal (tg-dialog-option-condition opt) '(has-item bread)))
+    (should (string= (tg-dialog-option-text opt) "给你面包"))
+    (should (string= (tg-dialog-option-response opt) "谢谢！"))
+    (should (equal (tg-dialog-option-effects opt) '((exp 10))))))
+
+(ert-deftest test-tg-config-parse-dialog-option-without-condition ()
+  "测试无条件的对话选项仍然正常解析。"
+  (let ((opt (tg-config--parse-dialog-option "你是谁？ :: 我是探险者。")))
+    (should opt)
+    (should (null (tg-dialog-option-condition opt)))
+    (should (string= (tg-dialog-option-text opt) "你是谁？"))
+    (should (string= (tg-dialog-option-response opt) "我是探险者。"))))
+
 (provide 'tg-config-test)
 ;;; test/tg-config-test.el ends here

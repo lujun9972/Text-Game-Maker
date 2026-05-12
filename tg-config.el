@@ -117,25 +117,31 @@ handler-str: handler 字符串
 
 (defun tg-config--parse-dialog-option (line)
   "解析对话选项行
-line: 格式为 \"选项文本 :: 响应文本 → effects → next-node-id\"
+line: 格式为 \"[条件] 选项文本 :: 响应文本 → effects → next-node-id\"
 返回: tg-dialog-option 结构或 nil"
   (when (and line (> (length line) 0))
-    (let* ((parts (split-string line "→" t "[\s→]+"))
-           (text-response (when (car parts)
-                           (split-string (car parts) "::" t "[\s:::]+")))
-           (text (when (car text-response) (string-trim (car text-response))))
-           (response (when (cadr text-response) (string-trim (cadr text-response))))
-           (effects-str (when (cadr parts) (string-trim (cadr parts))))
-           (next-node-str (when (caddr parts) (string-trim (caddr parts))))
-           (effects (tg-config--parse-effects effects-str))
-           (next-node (when next-node-str (intern next-node-str))))
-      (when text
-        (make-tg-dialog-option
-         :text text
-         :response response
-         :condition nil
-         :effects effects
-         :next-node next-node)))))
+    (let ((condition nil)
+          (remaining line))
+      ;; 检测行首条件：[(condition)]
+      (when (string-match "^\\[\\(.*?\\)\\]\s+" line)
+        (setq condition (read (match-string 1 line)))
+        (setq remaining (substring line (match-end 0))))
+      (let* ((parts (split-string remaining "→" t "[\s→]+"))
+             (text-response (when (car parts)
+                             (split-string (car parts) "::" t "[\s:::]+")))
+             (text (when (car text-response) (string-trim (car text-response))))
+             (response (when (cadr text-response) (string-trim (cadr text-response))))
+             (effects-str (when (cadr parts) (string-trim (cadr parts))))
+             (next-node-str (when (caddr parts) (string-trim (caddr parts))))
+             (effects (tg-config--parse-effects effects-str))
+             (next-node (when next-node-str (intern next-node-str))))
+        (when text
+          (make-tg-dialog-option
+           :text text
+           :response response
+           :condition condition
+           :effects effects
+           :next-node next-node))))))
 
 ;;; Section 解析器
 
