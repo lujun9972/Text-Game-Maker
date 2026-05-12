@@ -41,12 +41,12 @@ entry-node: 可选的入口节点ID（默认为npc-sym）
     ;; 显示问候语
     (let ((greeting (tg-dialog-state-greeting dialog)))
       (when greeting
-        (message "%s" greeting)))
+        (tg-message "%s" greeting)))
     ;; 获取可见选项并显示
     (let ((visible-options (tg-dialog-filter-options dialog)))
       (if (null visible-options)
           (progn
-            (message "没有可用的对话选项")
+            (tg-message "没有可用的对话选项")
             (setq tg-dialog-pending nil))
         (tg-dialog-show-options visible-options)))))
 
@@ -72,7 +72,7 @@ dialog-state: tg-dialog-state结构
 options: tg-dialog-option列表"
   (cl-loop for option in options
            for i from 1
-           do (message "%d. %s" i (tg-dialog-option-text option))))
+           do (tg-message "%d. %s" i (tg-dialog-option-text option))))
 
 ;;; 选择处理
 
@@ -99,7 +99,7 @@ choice-str: 玩家输入的选项编号（字符串）
            (npc-sym (tg-dialog-state-npc-symbol tg-dialog-pending)))
       ;; 显示回复
       (when response
-        (message "%s" response))
+        (tg-message "%s" response))
       ;; 应用效果
       (when effects
         (tg-dialog-apply-effects effects))
@@ -111,20 +111,20 @@ choice-str: 玩家输入的选项编号（字符串）
               (unless next-dialog
                 (error "对话节点%s不存在" next-node))
               (setq tg-dialog-pending next-dialog)
-              (message "")
+              (tg-message "")
               ;; 显示新节点的问候语和选项
               (let ((greeting (tg-dialog-state-greeting next-dialog)))
                 (when greeting
-                  (message "%s" greeting)))
+                  (tg-message "%s" greeting)))
               (let ((next-visible (tg-dialog-filter-options next-dialog)))
                 (if (null next-visible)
                     (progn
-                      (message "对话结束")
+                      (tg-message "对话结束")
                       (setq tg-dialog-pending nil))
                   (tg-dialog-show-options next-visible)))))
         ;; 对话结束
         (setq tg-dialog-pending nil)
-        (message "对话结束")))))
+        (tg-message "对话结束")))))
 
 ;;; 条件求值
 
@@ -167,27 +167,27 @@ effects: 效果列表，格式如 ((exp 50) (item potion) (gold 100) (bonus-poin
          (let ((player (tg-player game)))
            (when player
              (tg-creature-take-effect player (list 'exp amount))
-             (message "获得 %d 点经验" amount))))
+             (tg-message "获得 %d 点经验" amount))))
         (`(item ,item-sym)
          (let ((player (tg-player game)))
            (when player
              (tg-creature-add-item player item-sym)
-             (message "获得物品: %s" item-sym))))
+             (tg-message "获得物品: %s" item-sym))))
         (`(gold ,amount)
          (let ((player (tg-player game)))
            (when player
              (tg-creature-take-effect player (list 'gold amount))
-             (message "获得 %d 金币" amount))))
+             (tg-message "获得 %d 金币" amount))))
         (`(bonus-points ,amount)
          (let ((player (tg-player game)))
            (when player
              (tg-creature-take-effect player (list 'bonus-points amount))
-             (message "获得 %d 技能点" amount))))
+             (tg-message "获得 %d 技能点" amount))))
         (`(quest-activate ,quest-sym)
          (let ((quest (tg-get-quest quest-sym)))
            (when quest
              (setf (cl-struct-slot-value 'tg-quest 'status quest) 'active)
-             (message "任务已激活: %s" quest-sym))))
+             (tg-message "任务已激活: %s" quest-sym))))
         (`(trigger ,fn)
          (when (functionp fn)
            (funcall fn)))
