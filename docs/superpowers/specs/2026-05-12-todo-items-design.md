@@ -90,6 +90,13 @@
 
 三个字段全部可选。缺失时保留 defvar 默认值。
 
+### 解析方式
+
+EXP_TABLE 需要新增 `tg-config--parse-int-list` 辅助函数：`split-string` 按逗号分割后用 `string-to-number` 转为整数列表。不复用 `tg-config--split-list`（返回符号列表）。
+
+BONUS_POINTS 直接用 `string-to-number`。
+AUTO_UPGRADE 复用已有的 `tg-config--parse-attr`（与 Creature ATTR 格式一致）。
+
 ### 向后兼容
 
 - handlers.el 仍会被 `tg-config-load` 自动加载
@@ -123,7 +130,7 @@
 :TARGET: rat
 :COUNT: 1
 :DESCRIPTION: 消灭地牢里的老鼠
-:COMPLETION: 你成功消灭了老鼠！获得 10 点经验。
+:COMPLETION: 你成功消灭了老鼠！
 :REWARDS: (exp 10)
 :END:
 ```
@@ -138,7 +145,7 @@
 **`quests` 命令**（tg-action--handler-quests）：
 ```
 当前任务：
-  [active] 消灭地牢里的老鼠 (kill/1) - 0/1
+  [active] 消灭地牢里的老鼠 (kill) - 0/1
 ```
 有 description 时显示 description 替代任务 symbol。
 
@@ -146,11 +153,12 @@
 ```
 消灭地牢里的老鼠
   类型: kill  目标: rat  进度: 0/1
+  状态: active
   奖励: (exp 10)
 ```
 
 **完成时**（tg-track-quest）：
-当 progress >= count 且有 completion-text 时，`(tg-message "%s" completion-text)`。
+当 progress >= count 且有 completion-text 时，先输出 completion-text 再调用 give-rewards。completion-text 只描述成就事件，不包含奖励信息（奖励由 give-rewards 独立输出，避免重复）。
 
 ### 改动文件
 
@@ -208,8 +216,17 @@
 ### 改动文件
 
 - **修改** `tg-config.el::tg-config--parse-object-section` — 解析 CONTENTS 和 SUPPORTS
+- **修改** `sample/game.org` — 新增 chest（container+openable）和 table（supporter）对象，并放入房间
 - **修改** `test/tg-config-test.el` — 添加容器初始化解析测试
 - **修改** `test/tg-object-test.el` — 验证 contents/supports 初始值
+
+### sample/game.org 新增对象
+
+chest（宝箱）：props=container,openable，初始状态 closed，钥匙=rusty-key，内容=gem。放入 throne 房间。
+
+table（木桌）：props=supporter，上面放 map。放入 hall 房间。
+
+注意：map 从 hall 的 CONTENTS 移到 table 的 SUPPORTS 中（不重复）。
 
 ---
 
@@ -220,7 +237,7 @@
 | `tg-config.el` | 修改 4 处解析逻辑 | 1,2,3,4 |
 | `tg-quest.el` | struct 加 2 字段 | 3 |
 | `tg-action.el` | quest 显示 + completion | 3 |
-| `tg-save.el` | 序列化新字段 | 3 |
+| `tg-save.el` | 序列化新 quest 字段 | 3 |
 | `sample/game.org` | 添加新 Org 内容 | 1,2,3,4 |
 | `sample/handlers.el` | 移除 Level setq | 2 |
 | `test/tg-config-test.el` | 4 组解析测试 | 1,2,3,4 |
