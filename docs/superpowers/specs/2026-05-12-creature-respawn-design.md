@@ -85,9 +85,10 @@ initial-equipment    ;; 初始装备（解析时保存的 equipment 副本）
 
 1. 检查 creature 的 `respawn-interval` 是否非 nil
 2. 检查 creature 是否为 shopkeeper（shopkeeper 不刷新）
-3. 取 `[min, max]` 区间内随机整数 `interval`
-4. 计算 `respawn-turn = current-turn + interval`
-5. push `(creature-symbol . respawn-turn)` 到 `:respawn-queue`
+3. **检查队列中是否已存在该 creature-symbol（防重复）**，已存在则跳过
+4. 取 `[min, max]` 区间内随机整数 `interval`
+5. 计算 `respawn-turn = current-turn + interval`
+6. push `(creature-symbol . respawn-turn)` 到 `:respawn-queue`
 
 ### 3.2 回合检查
 
@@ -163,9 +164,31 @@ tg-respawn-tick:
 tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 nil
 ```
 
-依赖：`tg-registry`（获取 creature）、`tg-game`（读取回合和刷新队列）
+依赖：`tg-registry`（获取 creature）、`tg-game`（读取回合和刷新队列）、`tg-creature`（struct 访问）
 
 不依赖：`tg-commands`（避免循环依赖），`tg-respawn-tick` 由 `tg-commands` 调用
+
+---
+
+## 5.1 Save/Load 持久化
+
+`initial-*` 字段是配置时固定的（类似 quest 的 `description`），不需要 save——加载后由 `tg-config-load` 重建。
+
+`:respawn-queue` 是运行时动态状态，**必须 save/load**：
+
+### tg-save--collect-game-state 新增
+
+在 `tg-save.el` 的游戏状态收集函数中，新增：
+```
+:respawn-queue → (tg-game-get tg-game :respawn-queue)
+```
+
+### tg-save--restore-game-state 新增
+
+在恢复游戏状态时，新增：
+```
+(tg-game-put game :respawn-queue (plist-get saved :respawn-queue))
+```
 
 ---
 
@@ -178,6 +201,7 @@ tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 
 | `tg-config.el` | 修改 | 解析 RESPAWN + RESPAWN_DEFAULT + 保存初始状态 |
 | `tg-commands.el` | 修改 | dispatch 中调用 tg-respawn-tick |
 | `tg-action.el` | 修改 | attack 死亡时调用 tg-respawn-schedule |
+| `tg-save.el` | 修改 | 保存/加载 :respawn-queue |
 | `tg.el` | 修改 | require tg-respawn |
 | `sample/game.org` | 修改 | 添加 #+RESPAWN_DEFAULT + 部分 creature 加 RESPAWN |
 | `test/tg-respawn-test.el` | 新增 | 刷新模块测试 |
@@ -197,3 +221,5 @@ tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 
 7. **全局默认测试**：无 per-creature RESPAWN 时使用全局默认
 8. **per-creature 覆盖测试**：有 per-creature RESPAWN 时优先使用
 9. **多次死亡刷新测试**：同一 creature 多次死亡-刷新循环
+10. **防重复调度测试**：同一 creature 不会重复加入刷新队列
+11. **save/load 测试**：刷新队列保存后加载恢复正确
