@@ -1,0 +1,26 @@
+#+TITLE: Level Test
+#+START: room1
+#+PLAYER: hero
+
+* Rooms
+
+** room1
+:PROPERTIES:
+:NAME: 测试房间
+:DESC: 测试
+:END:
+
+* Creatures
+
+** hero
+:PROPERTIES:
+:NAME: 英雄
+:ATTR: hp 100 attack 5 defense 3 exp 0 level 1 bonus-points 0
+:END:
+
+* Level
+:PROPERTIES:
+:EXP_TABLE: 0,100,200,400
+:BONUS_POINTS: 5
+:AUTO_UPGRADE: hp 20 attack 1
+:END:

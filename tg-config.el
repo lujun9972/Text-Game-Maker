@@ -11,6 +11,7 @@
 (require 'tg-shop)
 (require 'tg-quest)
 (require 'tg-game)
+(require 'tg-level)
 
 ;;; 解析工具函数
 
@@ -45,6 +46,13 @@ str: 逗号分隔的字符串 (如 \"sword,shield,potion\")
 返回: 符号列表 (如 (sword shield potion))"
   (when (and str (> (length str) 0))
     (mapcar #'intern (split-string str "[\s,]+" t "[\s,]+"))))
+
+(defun tg-config--parse-int-list (str)
+  "将逗号分隔的整数字符串转为整数列表。
+str: 逗号分隔的整数字符串 (如 \"0,100,200,400\")
+返回: 整数列表 (如 (0 100 200 400))"
+  (when (and str (not (string-empty-p (string-trim str))))
+    (mapcar #'string-to-number (split-string str "," t "[\s]+"))))
 
 (defun tg-config--parse-exits (str)
   "解析出口字符串为 alist
@@ -326,6 +334,16 @@ headline: Quests section 的 headline 元素
                        :rewards rewards)))
           (tg-register-quest sym quest))))))
 
+(defun tg-config--parse-level-section (headline)
+  "解析 Level section，设置全局升级变量。
+headline: Level section 的 headline 元素"
+  (let ((exp-table (tg-config--parse-int-list (tg-config--read-property headline "EXP_TABLE")))
+        (bonus (tg-config--read-property headline "BONUS_POINTS"))
+        (auto-upgrade (tg-config--parse-attr (tg-config--read-property headline "AUTO_UPGRADE"))))
+    (when exp-table (setq tg-level-exp-table exp-table))
+    (when bonus (setq tg-level-bonus-points-per-level (string-to-number bonus)))
+    (when auto-upgrade (setq tg-level-auto-upgrade-attrs auto-upgrade))))
+
 ;;; 主函数
 
 (defun tg-config-load (org-file)
@@ -393,7 +411,9 @@ org-file: Org 配置文件路径
                ((string-equal section-name "shops")
                 (tg-config--parse-shop-section section))
                ((string-equal section-name "quests")
-                (tg-config--parse-quest-section section))))))
+                (tg-config--parse-quest-section section))
+               ((string-equal section-name "level")
+                (tg-config--parse-level-section section))))))
         game))))
 
 (provide 'tg-config)

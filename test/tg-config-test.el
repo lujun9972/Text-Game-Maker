@@ -624,5 +624,34 @@ More content to ignore.
     (should (string= (tg-dialog-option-text opt) "你是谁？"))
     (should (string= (tg-dialog-option-response opt) "我是探险者。"))))
 
+(ert-deftest test-tg-config-parse-level-section-default ()
+  "测试无 Level 段时保持默认值。"
+  (let ((default-table tg-level-exp-table)
+        (default-bonus tg-level-bonus-points-per-level)
+        (default-auto tg-level-auto-upgrade-attrs))
+    (unwind-protect
+        (progn
+          (tg-config-load (expand-file-name "test/fixtures/mini-game/game.org"))
+          (should (equal tg-level-exp-table default-table)))
+      (setq tg-level-exp-table default-table
+            tg-level-bonus-points-per-level default-bonus
+            tg-level-auto-upgrade-attrs default-auto))))
+
+(ert-deftest test-tg-config-parse-level-section-with-data ()
+  "测试 Level 段解析设置全局变量。"
+  (let ((default-table tg-level-exp-table)
+        (default-bonus tg-level-bonus-points-per-level)
+        (default-auto tg-level-auto-upgrade-attrs))
+    (unwind-protect
+        (progn
+          (tg-config-load (expand-file-name "test/fixtures/level-game.org"))
+          (should (equal tg-level-exp-table '(0 100 200 400)))
+          (should (eq tg-level-bonus-points-per-level 5))
+          (should (equal tg-level-auto-upgrade-attrs '((hp 20) (attack 1)))))
+      (setq tg-level-exp-table default-table
+            tg-level-bonus-points-per-level default-bonus
+            tg-level-auto-upgrade-attrs default-auto)
+      (tg-registry-clear))))
+
 (provide 'tg-config-test)
 ;;; test/tg-config-test.el ends here
