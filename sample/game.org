@@ -51,7 +51,7 @@
 :DESC: 破旧的水晶灯从天花板上垂下，地板上布满了裂痕和灰尘。
 :SHORT_DESC: 大厅
 :EXITS: north=corridor,west=entrance,east=throne
-:CONTENTS: map,potion,gold
+:CONTENTS: potion,gold,table
 :CREATURES: goblin,bat,goblin-merchant
 :END:
 
@@ -61,7 +61,7 @@
 :DESC: 一张腐朽的石制王座矗立在房间尽头，周围的空气中漂浮着诡异的光点。
 :SHORT_DESC: 王座间
 :EXITS: north=armory,west=hall
-:CONTENTS: crown,gem,sword-of-king
+:CONTENTS: crown,sword-of-king,chest
 :CREATURES: skeleton-king,skeleton-minion
 :END:
 
@@ -241,6 +241,24 @@
 :KEY:
 :EFFECTS: (defense 2) (hp 5)
 :HANDLER:
+:END:
+
+** chest
+:PROPERTIES:
+:NAME: 宝箱
+:SYNONYMS: chest
+:PROPS: container,openable
+:CONTENTS: gem
+:STATE: closed
+:KEY: rusty-key
+:END:
+
+** table
+:PROPERTIES:
+:NAME: 木桌
+:SYNONYMS: table
+:PROPS: supporter
+:SUPPORTS: map
 :END:
 
 * Creatures

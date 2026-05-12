@@ -653,5 +653,55 @@ More content to ignore.
             tg-level-auto-upgrade-attrs default-auto)
       (tg-registry-clear))))
 
+(ert-deftest test-tg-config-parse-object-with-contents ()
+  "测试解析容器对象的 CONTENTS 字段。"
+  (tg-registry-clear)
+  (let ((org-content "
+* Objects
+** chest
+:PROPERTIES:
+:NAME: 宝箱
+:PROPS: container
+:CONTENTS: coin,gem
+:END:
+"))
+    (with-temp-buffer
+      (insert org-content)
+      (org-mode)
+      (let* ((tree (org-element-parse-buffer))
+             (objects-section (org-element-map tree 'headline
+                               (lambda (h) (when (string= (downcase (org-element-property :raw-value h)) "objects") h))
+                               nil t)))
+        (tg-config--parse-object-section objects-section)
+        (let ((chest (tg-get-object 'chest)))
+          (should chest)
+          (should (equal (tg-object-contents chest) '(coin gem)))))))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-config-parse-object-with-supports ()
+  "测试解析支撑物对象的 SUPPORTS 字段。"
+  (tg-registry-clear)
+  (let ((org-content "
+* Objects
+** table
+:PROPERTIES:
+:NAME: 木桌
+:PROPS: supporter
+:SUPPORTS: lamp,book
+:END:
+"))
+    (with-temp-buffer
+      (insert org-content)
+      (org-mode)
+      (let* ((tree (org-element-parse-buffer))
+             (objects-section (org-element-map tree 'headline
+                               (lambda (h) (when (string= (downcase (org-element-property :raw-value h)) "objects") h))
+                               nil t)))
+        (tg-config--parse-object-section objects-section)
+        (let ((table (tg-get-object 'table)))
+          (should table)
+          (should (equal (tg-object-supports table) '(lamp book)))))))
+  (tg-registry-clear))
+
 (provide 'tg-config-test)
 ;;; test/tg-config-test.el ends here

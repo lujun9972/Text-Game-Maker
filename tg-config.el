@@ -199,12 +199,14 @@ headline: Objects section 的 headline 元素
                       (when k (intern k))))
                (effects (tg-config--parse-effects (tg-config--read-property child "EFFECTS")))
                (handler (tg-config--resolve-handler (tg-config--read-property child "HANDLER")))
+               (contents (tg-config--split-list (tg-config--read-property child "CONTENTS")))
+               (supports (tg-config--split-list (tg-config--read-property child "SUPPORTS")))
                (obj (make-tg-object
                      :symbol sym
                      :name name
                      :synonyms synonyms
-                     :contents nil
-                     :supports nil
+                     :contents contents
+                     :supports supports
                      :props props
                      :state state
                      :key key
