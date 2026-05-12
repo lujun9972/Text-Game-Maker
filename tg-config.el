@@ -324,6 +324,8 @@ headline: Quests section 的 headline 元素
                (count-str (tg-config--read-property child "COUNT"))
                (count (when count-str (string-to-number count-str)))
                (rewards (tg-config--parse-effects (tg-config--read-property child "REWARDS")))
+               (description (tg-config--read-property child "DESCRIPTION"))
+               (completion-text (tg-config--read-property child "COMPLETION"))
                (quest (make-tg-quest
                        :symbol sym
                        :type type
@@ -331,7 +333,9 @@ headline: Quests section 的 headline 元素
                        :count count
                        :progress 0
                        :status 'inactive
-                       :rewards rewards)))
+                       :rewards rewards
+                       :description description
+                       :completion-text completion-text)))
           (tg-register-quest sym quest))))))
 
 (defun tg-config--parse-level-section (headline)

@@ -14,7 +14,9 @@
   count            ;; 目标数量
   progress         ;; 当前进度
   status           ;; 状态：inactive/active/completed
-  rewards)         ;; 奖励列表 ((exp N) (item sym) (bonus-points N) (trigger fn))
+  rewards          ;; 奖励列表 ((exp N) (item sym) (bonus-points N) (trigger fn))
+  description      ;; 任务描述文本 (string or nil)
+  completion-text) ;; 完成时显示文本 (string or nil)
 
 ;;; 任务激活
 
@@ -47,6 +49,9 @@
                      (when (>= new-progress (tg-quest-count quest))
                        ;; 标记为已完成
                        (setf (tg-quest-status quest) 'completed)
+                       ;; 显示完成文本
+                       (when (tg-quest-completion-text quest)
+                         (tg-message "%s" (tg-quest-completion-text quest)))
                        ;; 发放奖励
                        (tg-quest--give-rewards quest game player))))))
              tg--quests)))

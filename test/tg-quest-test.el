@@ -233,5 +233,29 @@
     (tg-track-quest 'kill 'goblin)
     (should (= (tg-quest-progress quest) 1))))
 
+(ert-deftest test-tg-quest-description-field ()
+  "测试 quest struct 新字段。"
+  (let ((q (make-tg-quest :symbol 'test :type 'kill :target 'rat
+                          :count 1 :progress 0 :status 'active :rewards nil
+                          :description "消灭老鼠" :completion-text "干得好！")))
+    (should (string= (tg-quest-description q) "消灭老鼠"))
+    (should (string= (tg-quest-completion-text q) "干得好！"))
+    (should (null (tg-quest-description (make-tg-quest))))))
+
+(ert-deftest test-tg-quest-completion-text-on-complete ()
+  "测试任务完成时输出 completion-text。"
+  (tg-registry-clear)
+  (let ((tg-game (tg-new-game "Test" "Author")))
+    (tg-game-put tg-game :player 'hero)
+    (tg-register-creature 'hero (make-tg-creature :symbol 'hero :name "Hero"
+                                                   :attr '((hp 100))))
+    (tg-register-quest 'test-q (make-tg-quest :symbol 'test-q :type 'kill
+                                                :target 'rat :count 1 :progress 0
+                                                :status 'active :rewards nil
+                                                :completion-text "任务完成！"))
+    (tg-track-quest 'kill 'rat)
+    (should (eq (tg-quest-status (tg-get-quest 'test-q)) 'completed)))
+  (tg-registry-clear))
+
 (provide 'tg-quest-test)
 ;;; tg-quest-test.el ends here

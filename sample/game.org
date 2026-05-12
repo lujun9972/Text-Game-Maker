@@ -450,6 +450,8 @@
 :TYPE: kill
 :TARGET: rat
 :COUNT: 1
+:DESCRIPTION: 消灭地牢里的老鼠
+:COMPLETION: 你消灭了那只老鼠！
 :REWARDS: (exp 10)
 :END:
 
@@ -458,6 +460,8 @@
 :TYPE: talk
 :TARGET: prisoner
 :COUNT: 1
+:DESCRIPTION: 与囚犯交谈
+:COMPLETION: 囚犯感谢你的帮助！
 :REWARDS: (exp 15) (item map)
 :END:
 
@@ -466,6 +470,8 @@
 :TYPE: collect
 :TARGET: iron-sword
 :COUNT: 1
+:DESCRIPTION: 获得铁剑
+:COMPLETION: 你找到了一把铁剑！
 :REWARDS: (exp 20)
 :END:
 
@@ -474,6 +480,8 @@
 :TYPE: kill
 :TARGET: goblin
 :COUNT: 1
+:DESCRIPTION: 消灭狡猾的哥布林
+:COMPLETION: 哥布林被你击败了！
 :REWARDS: (exp 30)
 :END:
 
@@ -482,6 +490,8 @@
 :TYPE: explore
 :TARGET: throne
 :COUNT: 1
+:DESCRIPTION: 探索王座间
+:COMPLETION: 你踏入了王座间！
 :REWARDS: (exp 50)
 :END:
 
@@ -490,6 +500,8 @@
 :TYPE: kill
 :TARGET: skeleton-king
 :COUNT: 1
+:DESCRIPTION: 击败骷髅王
+:COMPLETION: 骷髅王倒下了！你赢得了最终的胜利！
 :REWARDS: (exp 200) (bonus-points 5)
 :END:
 

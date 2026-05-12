@@ -649,7 +649,7 @@ WORD: 动作词或同义词"
                              (pcase (tg-quest-status quest)
                                ('active "进行中")
                                ('completed "已完成"))
-                             (symbol-name sym)
+                             (or (tg-quest-description quest) (symbol-name sym))
                              (symbol-name (tg-quest-type quest))
                              (tg-quest-progress quest)
                              (tg-quest-count quest))))
@@ -672,7 +672,7 @@ WORD: 动作词或同义词"
          ((eq (tg-quest-status quest) 'inactive)
           (tg-message "你还没有接受这个任务。"))
          (t
-          (tg-message "【%s】" do-key)
+          (tg-message "【%s】" (or (tg-quest-description quest) (symbol-name do-key)))
           (tg-message "  类型：%s" (tg-quest-type quest))
           (tg-message "  目标：%s" (tg-quest-target quest))
           (tg-message "  进度：%d/%d" (tg-quest-progress quest) (tg-quest-count quest))
