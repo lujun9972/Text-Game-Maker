@@ -532,8 +532,111 @@
     (tg-mode-test-teardown)))
 
 ;;; ============================================================
-;;; 双名称补全测试（中文名 + symbol 名）
+;;; 方向词补全测试
 ;;; ============================================================
+
+(ert-deftest test-tg-complete-direction-with-go ()
+  "go 动词后 TAB 应补全方向词。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "go nor")
+        (tg-complete-command)
+        (should (string-match-p "go north$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-direction-with-move ()
+  "move 动词后 TAB 也应补全方向词。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "move sou")
+        (tg-complete-command)
+        (should (string-match-p "move south$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-direction-standalone ()
+  "单独输入方向词时 TAB 应补全方向词（优先于动词补全）。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "east")
+        (tg-complete-command)
+        (should (string-match-p "east$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-direction-ambiguous ()
+  "方向词有歧义时扩展到公共前缀。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "go n")
+        (tg-complete-command)
+        ;; "n" 匹配 north/northeast/northwest，公共前缀为 "north"
+        ;; （因为 "north" 是 "northeast" 和 "northwest" 的前缀）
+        (should (string-match-p "go north$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-direction-fallback-to-verb ()
+  "非方向词的单字输入应走动词补全。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "lo")
+        (tg-complete-command)
+        ;; "lo" 不是方向词前缀，走动词补全 → "look"
+        (should (string-match-p "look$" (buffer-string))))
+    (tg-mode-test-teardown)))
 
 (ert-deftest test-tg-complete-object-symbol-name ()
   "对象补全应支持 symbol 名前缀。"
