@@ -632,6 +632,20 @@ WORD: 动作词或同义词"
         (when gold (tg-message "  金币：%d" gold))
         (when (and bonus-points (> bonus-points 0))
           (tg-message "  属性点：%d" bonus-points))
+        ;; 显示进行中的任务
+        (let ((active-quests nil))
+          (maphash (lambda (_sym quest)
+                     (when (eq (tg-quest-status quest) 'active)
+                       (push quest active-quests)))
+                   tg--quests)
+          (when active-quests
+            (tg-message "  进行中的任务：")
+            (dolist (q active-quests)
+              (tg-message "    %s (%s) - %d/%d"
+                          (or (tg-quest-description q) (symbol-name (tg-quest-symbol q)))
+                          (symbol-name (tg-quest-type q))
+                          (tg-quest-progress q)
+                          (tg-quest-count q)))))
         t))))
 
 (defun tg-action--handler-upgrade (ast game)
@@ -652,22 +666,22 @@ WORD: 动作词或同义词"
         (tg-message "属性点不足或无法升级。"))))))
 
 (defun tg-action--handler-quests (_ast game)
-  "列出所有任务"
+  "列出所有任务（含可接取、进行中、已完成）"
   (let ((found nil))
     (maphash (lambda (sym quest)
-               (unless (eq (tg-quest-status quest) 'inactive)
-                 (setq found t)
-                 (tg-message "  [%s] %s (%s) - %d/%d"
-                             (pcase (tg-quest-status quest)
-                               ('active "进行中")
-                               ('completed "已完成"))
-                             (or (tg-quest-description quest) (symbol-name sym))
-                             (symbol-name (tg-quest-type quest))
-                             (tg-quest-progress quest)
-                             (tg-quest-count quest))))
+               (setq found t)
+               (tg-message "  [%s] %s (%s) - %d/%d"
+                           (pcase (tg-quest-status quest)
+                             ('inactive "可接取")
+                             ('active "进行中")
+                             ('completed "已完成"))
+                           (format "%s(%s)" (or (tg-quest-description quest) (symbol-name sym)) sym)
+                           (symbol-name (tg-quest-type quest))
+                           (tg-quest-progress quest)
+                           (tg-quest-count quest)))
              tg--quests)
     (unless found
-      (tg-message "没有进行中的任务。"))
+      (tg-message "没有任何任务。"))
     t))
 
 (defun tg-action--handler-quest (ast game)
