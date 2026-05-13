@@ -95,7 +95,39 @@
 
   ;; 重置输出捕获
   (setq tg-mode-test-output nil)
-  (setq tg-message-hook nil))
+  (setq tg-message-hook nil)
+
+  ;; 创建测试 creature
+  (let ((goblin (make-tg-creature
+                 :symbol 'test-goblin
+                 :name "Goblin"
+                 :attr '((hp 50))
+                 :inventory nil
+                 :equipment nil
+                 :exp-reward nil
+                 :behaviors nil
+                 :death-trigger nil
+                 :shopkeeper nil
+                 :handler nil)))
+    (tg-register-creature 'test-goblin goblin)
+    (let ((room (tg-get-room 'test-room)))
+      (setf (tg-room-creatures room) '(test-goblin))))
+
+  ;; 创建第二个测试对象
+  (let ((torch (make-tg-object
+                :symbol 'test-torch
+                :name "torch"
+                :synonyms nil
+                :contents nil
+                :supports nil
+                :props nil
+                :state nil
+                :key nil
+                :effects nil
+                :handler nil)))
+    (tg-register-object 'test-torch torch)
+    (let ((room (tg-get-room 'test-room)))
+      (tg-room-add-object room 'test-torch))))
 
 (defun tg-mode-test-teardown ()
   "清理测试环境。"
@@ -497,6 +529,160 @@
           (tg-complete-command)
           ;; 无匹配，buffer 内容不变
           (should (equal (buffer-string) before))))
+    (tg-mode-test-teardown)))
+
+;;; ============================================================
+;;; 双名称补全测试（中文名 + symbol 名）
+;;; ============================================================
+
+(ert-deftest test-tg-complete-object-symbol-name ()
+  "对象补全应支持 symbol 名前缀。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents '(my-sword)
+                     :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (let ((sword (make-tg-object
+                      :symbol 'my-sword
+                      :name "长剑"
+                      :synonyms nil :contents nil :supports nil
+                      :props nil :state nil :key nil :effects nil :handler nil)))
+          (tg-register-object 'my-sword sword))
+        (tg-render-prompt)
+        (insert "take my-")
+        (tg-complete-command)
+        (should (string-match-p "my-sword$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-object-chinese-name ()
+  "对象补全应支持中文名前缀。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents '(my-sword)
+                     :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (let ((sword (make-tg-object
+                      :symbol 'my-sword
+                      :name "长剑"
+                      :synonyms nil :contents nil :supports nil
+                      :props nil :state nil :key nil :effects nil :handler nil)))
+          (tg-register-object 'my-sword sword))
+        (tg-render-prompt)
+        (insert "take 长")
+        (tg-complete-command)
+        (should (string-match-p "长剑$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-object-creature-symbol ()
+  "对象补全应包含房间内 creature 的 symbol 名。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil
+                     :creatures '(test-goblin)
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "attack test-")
+        (tg-complete-command)
+        (should (string-match-p "test-goblin$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-object-creature-name ()
+  "对象补全应包含房间内 creature 的显示名。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil
+                     :creatures '(test-goblin)
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        (tg-render-prompt)
+        (insert "attack gob")
+        (tg-complete-command)
+        (should (string-match-p "goblin$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-complete-object-inventory-symbol ()
+  "对象补全应包含背包物品 symbol 名。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (with-temp-buffer
+        (tg-mode)
+        (setq tg-output-buffer (current-buffer))
+        (setq tg-game (tg-new-game "Test" "Author"))
+        (let ((room (make-tg-room
+                     :symbol 'hall :name "Hall" :desc "A hall"
+                     :exits nil :contents nil :creatures nil
+                     :visit-count 0)))
+          (tg-register-room 'hall room)
+          (tg-game-put tg-game :location 'hall))
+        ;; 需要注册 player
+        (let ((player (make-tg-creature
+                       :symbol 'test-player
+                       :name "Player"
+                       :attr '((hp 100))
+                       :inventory nil
+                       :equipment nil
+                       :exp-reward nil
+                       :behaviors nil
+                       :death-trigger nil
+                       :shopkeeper nil
+                       :handler nil)))
+          (tg-register-creature 'test-player player)
+          (tg-game-put tg-game :player 'test-player))
+        (let ((potion (make-tg-object
+                       :symbol 'my-potion
+                       :name "药水"
+                       :synonyms nil :contents nil :supports nil
+                       :props nil :state nil :key nil :effects nil :handler nil)))
+          (tg-register-object 'my-potion potion)
+          (let* ((player-sym (tg-game-get tg-game :player))
+                 (player (tg-get-creature player-sym)))
+            (setf (tg-creature-inventory player) '(my-potion))))
+        (tg-render-prompt)
+        (insert "drop my-")
+        (tg-complete-command)
+        (should (string-match-p "my-potion$" (buffer-string))))
+    (tg-mode-test-teardown)))
+
+(ert-deftest test-tg-parser-recognizes-symbol-name ()
+  "解析器应能识别对象的 symbol 名。"
+  (tg-mode-test-setup)
+  (unwind-protect
+      (progn
+        (tg-register-builtins)
+        (let ((ast (tg-parse "take test-key")))
+          (should (eq (plist-get ast :action) 'take))
+          (should (eq (plist-get ast :do-key) 'test-key))))
     (tg-mode-test-teardown)))
 
 ;;; ============================================================

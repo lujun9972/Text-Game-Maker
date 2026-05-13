@@ -93,12 +93,13 @@
     vocab))
 
 (defun tg-parser-add-object-vocab (vocab obj-sym)
-  "将对象的名称和同义词添加到词汇表。"
+  "将对象的名称、同义词和 symbol 名添加到词汇表。"
   (let ((obj (tg-get-object obj-sym)))
     (when obj
       (puthash (downcase (tg-object-name obj)) obj-sym vocab)
       (dolist (syn (tg-object-synonyms obj))
-        (puthash (downcase (format "%s" syn)) obj-sym vocab)))))
+        (puthash (downcase (format "%s" syn)) obj-sym vocab))
+      (puthash (downcase (symbol-name obj-sym)) obj-sym vocab))))
 
 (defun tg-parser-add-creature-vocab (vocab creature-sym)
   "将生物的名称和 symbol 名添加到词汇表。"

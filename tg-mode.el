@@ -304,40 +304,60 @@ prompt 后为空：补全动词名。
           (insert completion)))))))
 
 (defun tg-complete-object (prefix)
-  "补全对象名。PREFIX 为当前输入的对象前缀。"
+  "补全对象名。PREFIX 为当前输入的对象前缀。
+候选同时包含中文名和 symbol 名（统一小写）。
+来源：房间可见对象 + 背包物品 + 房间内 creature。"
   (when (and tg-game (tg-game-get tg-game :location))
     (let* ((location (tg-game-get tg-game :location))
            (room (tg-get-room location))
            (candidates '())
            (lower-prefix (downcase prefix)))
       (when room
+        ;; 房间可见对象 → 中文名 + symbol 名
         (dolist (obj-sym (tg-room-all-visible-objects room))
           (let ((obj (tg-get-object obj-sym)))
             (when obj
-              (let ((name (tg-object-name obj)))
+              (let ((name (tg-object-name obj))
+                    (sym-name (symbol-name obj-sym)))
                 (when (and name (string-prefix-p lower-prefix (downcase name)))
-                  (push name candidates)))))))
-      ;; 也补全背包物品
+                  (push (downcase name) candidates))
+                (when (string-prefix-p lower-prefix (downcase sym-name))
+                  (push (downcase sym-name) candidates))))))
+        ;; 房间 creature → 显示名 + symbol 名
+        (dolist (creature-sym (tg-room-creatures room))
+          (let ((creature (tg-get-creature creature-sym)))
+            (when creature
+              (let ((name (tg-creature-name creature))
+                    (sym-name (symbol-name creature-sym)))
+                (when (and name (string-prefix-p lower-prefix (downcase name)))
+                  (push (downcase name) candidates))
+                (when (string-prefix-p lower-prefix (downcase sym-name))
+                  (push (downcase sym-name) candidates)))))))
+      ;; 背包物品 → 中文名 + symbol 名
       (let* ((player-sym (tg-game-get tg-game :player))
              (player (when player-sym (tg-get-creature player-sym))))
         (when player
           (dolist (obj-sym (tg-creature-inventory player))
             (let ((obj (tg-get-object obj-sym)))
               (when obj
-                (let ((name (tg-object-name obj)))
+                (let ((name (tg-object-name obj))
+                      (sym-name (symbol-name obj-sym)))
                   (when (and name (string-prefix-p lower-prefix (downcase name)))
-                    (push name candidates))))))))
+                    (push (downcase name) candidates))
+                  (when (string-prefix-p lower-prefix (downcase sym-name))
+                    (push (downcase sym-name) candidates))))))))
+      ;; 去重
+      (setq candidates (delete-dups candidates))
       (when candidates
         (let ((completion (try-completion lower-prefix candidates)))
           (cond
            ((null completion) nil)
            ((eq completion t) nil)
-           ((string= (downcase completion) lower-prefix)
+           ((string= completion lower-prefix)
             (let ((matches (all-completions lower-prefix candidates)))
               (when (> (length matches) 1)
                 (tg-message "候选对象: %s" (string-join matches ", ")))))
            ((stringp completion)
-            ;; 只替换最后一个词
             (let ((inhibit-read-only t))
               (delete-region (- (point) (length prefix)) (point)))
             (insert completion))))))))
