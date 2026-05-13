@@ -65,7 +65,9 @@ Prompt 格式：[房间名]> "
   (local-set-key (kbd "RET") #'tg-send-command)
   (local-set-key (kbd "TAB") #'tg-complete-command)
   (local-set-key (kbd "M-p") #'tg-history-prev)
-  (local-set-key (kbd "M-n") #'tg-history-next))
+  (local-set-key (kbd "M-n") #'tg-history-next)
+  (local-set-key (kbd "<up>") #'tg-history-prev)
+  (local-set-key (kbd "<down>") #'tg-history-next))
 
 ;;; ============================================================
 ;;; Buffer 管理
