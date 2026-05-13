@@ -366,13 +366,13 @@ WORD: 动作词或同义词"
             (tg-message "装备：%s"
                         (mapconcat (lambda (s)
                                      (let ((o (tg-get-object s)))
-                                       (if o (tg-object-name o) (format "%s" s))))
+                                       (if o (format "%s(%s)" (tg-object-name o) s) (format "%s" s))))
                                    equipment "、")))
           (when inventory
             (tg-message "背包：%s"
                         (mapconcat (lambda (s)
                                      (let ((o (tg-get-object s)))
-                                       (if o (tg-object-name o) (format "%s" s))))
+                                       (if o (format "%s(%s)" (tg-object-name o) s) (format "%s" s))))
                                    inventory "、")))
           t)))))
 
