@@ -154,8 +154,16 @@
              (remaining (or (cdr multi-result) (cdr tokens)))
              (normalized-verb (tg-parser-normalize-verb verb))
              (action-id (tg-find-action normalized-verb)))
-        (if (not action-id)
-            (list :error :unknown-action :verb verb)
+        (cond
+         ((not action-id)
+          (list :error :unknown-action :verb verb))
+         ((eq action-id 'go)
+          (let ((dir (when remaining
+                       (cdr (assoc (downcase (car remaining)) tg-parser-direction-map)))))
+            (if dir
+                (list :action 'go :direction dir)
+              (list :error :unknown-noun :word (car remaining)))))
+         (t
           (let* ((vocab (tg-parser-build-vocabulary tg-game))
                  (prep-split (tg-parser-split-prep-phrase remaining))
                  (main-words (car prep-split))
@@ -190,7 +198,7 @@
                   (setq ast (plist-put ast :io-key io-key)))
                 (when io-adj
                   (setq ast (plist-put ast :io-adj io-adj)))
-                ast))))))))))
+                ast)))))))))))
 
 (defvar tg-grammar nil
   "兼容性别名：PEG 语法（当前使用手写解析器）")
