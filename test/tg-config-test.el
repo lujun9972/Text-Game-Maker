@@ -703,5 +703,16 @@ More content to ignore.
           (should (equal (tg-object-supports table) '(lamp book)))))))
   (tg-registry-clear))
 
+(ert-deftest test-tg-config-parse-respawn-interval ()
+  "测试刷新区间解析"
+  (should (equal (tg-config--parse-respawn-interval "8-15") '(8 . 15)))
+  (should (equal (tg-config--parse-respawn-interval "10") '(10 . 10)))
+  (should (null (tg-config--parse-respawn-interval nil)))
+  (should (null (tg-config--parse-respawn-interval "")))
+  (should (null (tg-config--parse-respawn-interval "15-8")))  ;; N > M → nil
+  (should (null (tg-config--parse-respawn-interval "0")))     ;; 0 → nil（无效间隔）
+  (should (null (tg-config--parse-respawn-interval "0-0")))   ;; 0-0 → nil
+  (should (null (tg-config--parse-respawn-interval "0-5"))))  ;; min < 1 → nil
+
 (provide 'tg-config-test)
 ;;; test/tg-config-test.el ends here

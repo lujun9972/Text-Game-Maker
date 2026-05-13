@@ -12,6 +12,7 @@
 (require 'tg-quest)
 (require 'tg-game)
 (require 'tg-level)
+(require 'tg-respawn)
 
 ;;; 解析工具函数
 
@@ -53,6 +54,22 @@ str: 逗号分隔的整数字符串 (如 \"0,100,200,400\")
 返回: 整数列表 (如 (0 100 200 400))"
   (when (and str (not (string-empty-p (string-trim str))))
     (mapcar #'string-to-number (split-string str "," t "[\s]+"))))
+
+(defun tg-config--parse-respawn-interval (str)
+  "解析刷新区间字符串。
+str: \"8-15\" → (8 . 15), \"10\" → (10 . 10), nil/\"\" → nil"
+  (when (and str (not (string-empty-p (string-trim str))))
+    (cond
+     ((string-match "^\\([0-9]+\\)-\\([0-9]+\\)$" str)
+      (let ((min-val (string-to-number (match-string 1 str)))
+            (max-val (string-to-number (match-string 2 str))))
+        (when (<= 1 min-val max-val)  ;; min 至少为 1
+          (cons min-val max-val))))
+     ((string-match "^[0-9]+$" str)
+      (let ((n (string-to-number str)))
+        (when (>= n 1)
+          (cons n n))))
+     (t nil))))
 
 (defun tg-config--parse-exits (str)
   "解析出口字符串为 alist
@@ -234,6 +251,18 @@ headline: Creatures section 的 headline 元素
                (shopkeeper-str (tg-config--read-property child "SHOPKEEPER"))
                (shopkeeper (when shopkeeper-str (not (string-equal shopkeeper-str "nil"))))
                (handler (tg-config--resolve-handler (tg-config--read-property child "HANDLER")))
+               ;; 刷新配置
+               (respawn-interval (tg-config--parse-respawn-interval (tg-config--read-property child "RESPAWN")))
+               ;; 全局默认：仅当 per-creature 无配置、非 shopkeeper、全局默认存在时使用
+               (respawn-interval (if (and (not respawn-interval)
+                                          (not shopkeeper)
+                                          tg-respawn-default-interval)
+                                     tg-respawn-default-interval
+                                   respawn-interval))
+               ;; 初始快照：仅当有刷新配置时保存
+               (initial-attr (when respawn-interval (copy-tree attr)))
+               (initial-inventory (when respawn-interval (copy-sequence inventory)))
+               (initial-equipment (when respawn-interval (copy-sequence equipment)))
                (creature (make-tg-creature
                           :symbol sym
                           :name name
@@ -244,7 +273,11 @@ headline: Creatures section 的 headline 元素
                           :behaviors behaviors
                           :death-trigger death-trigger
                           :shopkeeper shopkeeper
-                          :handler handler)))
+                          :handler handler
+                          :respawn-interval respawn-interval
+                          :initial-attr initial-attr
+                          :initial-inventory initial-inventory
+                          :initial-equipment initial-equipment)))
           (tg-register-creature sym creature))))))
 
 (defun tg-config--parse-dialog-section (headline)
@@ -382,6 +415,9 @@ org-file: Org 配置文件路径
     (when (file-exists-p handlers-file)
       (load-file handlers-file)))
 
+  ;; 重置刷新全局默认，防止旧值残留
+  (setq tg-respawn-default-interval nil)
+
   ;; 读取 Org 文件内容
   (let ((content (with-temp-buffer
                    (insert-file-contents org-file)
@@ -391,7 +427,12 @@ org-file: Org 配置文件路径
     (let ((title (tg-config--parse-keyword content "TITLE"))
           (author (or (tg-config--parse-keyword content "AUTHOR") "Unknown"))
           (start-room (tg-config--parse-keyword content "START"))
-          (player-name (tg-config--parse-keyword content "PLAYER")))
+          (player-name (tg-config--parse-keyword content "PLAYER"))
+          (respawn-default-str (tg-config--parse-keyword content "RESPAWN_DEFAULT")))
+      ;; 设置刷新全局默认（在 section 解析之前）
+      (when respawn-default-str
+        (setq tg-respawn-default-interval
+              (tg-config--parse-respawn-interval respawn-default-str)))
       ;; 创建游戏状态
       (let ((game (tg-new-game title author)))
         ;; 设置起始房间
