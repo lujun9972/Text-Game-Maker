@@ -24,6 +24,7 @@
 (require 'tg-quest)
 (require 'tg-shop)
 (require 'tg-level)
+(require 'tg-respawn)
 (require 'tg-save)
 (require 'tg-config)
 (require 'tg-config-gen)

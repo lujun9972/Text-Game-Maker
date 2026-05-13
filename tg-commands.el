@@ -27,7 +27,7 @@
   "游戏输出缓冲区。nil 表示输出到当前缓冲区。")
 
 (defvar tg-message-hook nil
-  "消息输出后调用的钩子函数列表。每个函数接收两个参数：(text game)。")
+  "消息输出后调用的钩子函数列表。每个函数接收一个参数：text（已含换行的消息字符串）。")
 
 ;;; 全局输出函数
 
@@ -211,7 +211,8 @@ GAME: 游戏状态哈希表
                   (member (format "%s" action-id) passive-list))
         (tg-npc-run-behaviors game)
         (tg-buffs-tick game)
-        (tg-game-incf game :turns)))))
+        (tg-game-incf game :turns)
+        (tg-respawn-tick)))))
 
 (provide 'tg-commands)
 ;;; tg-commands.el ends here

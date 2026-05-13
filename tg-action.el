@@ -412,14 +412,24 @@ WORD: 动作词或同义词"
             (if (tg-creature-dead-p creature)
                 (let ((room (tg-get-room (tg-game-get game :location))))
                   (tg-message "%s被击败了！" (tg-creature-name creature))
-                  ;; 掉落物品到房间
-                  (dolist (item-sym (tg-creature-inventory creature))
-                    (tg-room-add-object room item-sym)
-                    (tg-message "%s掉落了%s。"
-                                (tg-creature-name creature)
-                                (tg-object-name (tg-get-object item-sym))))
-                  ;; 清空 NPC 背包
-                  (setf (tg-creature-inventory creature) nil)
+                  ;; 掉落物品（背包 + 装备，含 no-drop 过滤）
+                  (let ((all-items (append (tg-creature-inventory creature)
+                                           (tg-creature-equipment creature)))
+                        (remaining-items nil))
+                    (dolist (item-sym all-items)
+                      (let ((obj (tg-get-object item-sym)))
+                        (if (and obj (memq 'no-drop (tg-object-props obj)))
+                            (push item-sym remaining-items)  ;; no-drop：保留
+                          ;; 掉落
+                          (tg-room-add-object room item-sym)
+                          (tg-message "%s掉落了%s。"
+                                      (tg-creature-name creature)
+                                      (tg-object-name obj)))))
+                    ;; 清空并保留 no-drop 物品
+                    (setf (tg-creature-inventory creature)
+                          (cl-intersection (tg-creature-inventory creature) remaining-items))
+                    (setf (tg-creature-equipment creature)
+                          (cl-intersection (tg-creature-equipment creature) remaining-items)))
                   ;; 经验奖励
                   (let ((exp-reward (tg-creature-exp-reward creature)))
                     (when exp-reward
@@ -431,7 +441,9 @@ WORD: 动作词或同义词"
                   ;; 触发死亡触发器
                   (let ((death-trigger (tg-creature-death-trigger creature)))
                     (when (and death-trigger (functionp death-trigger))
-                      (funcall death-trigger creature game))))
+                      (funcall death-trigger creature game)))
+                  ;; 触发刷新调度
+                  (tg-respawn-schedule do-key))
               ;; NPC 反击
               (let* ((npc-attack (tg-creature-attr-get creature 'attack))
                      (player-defense (tg-creature-effective-attr player 'defense buff-values))

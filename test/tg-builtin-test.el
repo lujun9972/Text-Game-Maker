@@ -113,6 +113,11 @@
     (make-tg-object :symbol 'table :name "桌子" :synonyms '(table)
                     :contents nil :supports nil :props '(supporter)
                     :state nil :key nil :effects nil :handler nil))
+  ;; cursed-ring - no-drop + wearable
+  (tg-register-object 'cursed-ring
+    (make-tg-object :symbol 'cursed-ring :name "诅咒之戒" :synonyms '(ring)
+                    :contents nil :supports nil :props '(no-drop wearable)
+                    :state nil :key nil :effects '((attack 3)) :handler nil))
 
   ;; 创建测试生物
   ;; 玩家
@@ -127,7 +132,7 @@
   (let ((goblin (make-tg-creature
                  :symbol 'goblin :name "哥布林"
                  :attr '((hp 30) (attack 8) (defense 2))
-                 :inventory '(sword) :equipment nil
+                 :inventory '(sword) :equipment '(wearable-armor)
                  :exp-reward 50
                  :behaviors nil :death-trigger nil
                  :shopkeeper nil :handler nil)))
@@ -366,7 +371,30 @@
    ;; 玩家应该获得经验
    (should (> (tg-creature-attr-get (tg-player tg-game) 'exp) 0))
    ;; 输出应该包含"击败"
-   (should (string-match "击败" (tg-builtin-test-output)))))
+   (should (string-match "击败" (tg-builtin-test-output)))
+   ;; 背包物品应掉落到房间
+   (should (member 'sword (tg-room-contents (tg-get-room 'room1))))
+   ;; 装备物品应掉落到房间
+   (should (member 'wearable-armor (tg-room-contents (tg-get-room 'room1))))
+   ;; goblin 背包和装备应清空
+   (should (null (tg-creature-inventory (tg-get-creature 'goblin))))
+   (should (null (tg-creature-equipment (tg-get-creature 'goblin))))))
+
+(ert-deftest test-builtin-attack-kill-no-drop ()
+  "测试 no-drop 物品不掉落，保留在 creature 身上"
+  (tg-builtin-with-env
+   ;; 给 goblin 装备 no-drop 物品
+   (let ((goblin (tg-get-creature 'goblin)))
+     (setf (tg-creature-equipment goblin) '(cursed-ring)))
+   ;; 击杀 goblin
+   (dotimes (_i 5)
+     (when (not (tg-creature-dead-p (tg-get-creature 'goblin)))
+       (tg-action--handler-attack '(:action attack :do-key goblin) tg-game)))
+   (should (tg-creature-dead-p (tg-get-creature 'goblin)))
+   ;; no-drop 物品不应掉落到房间
+   (should (not (member 'cursed-ring (tg-room-contents (tg-get-room 'room1)))))
+   ;; no-drop 物品应保留在 creature equipment 中
+   (should (member 'cursed-ring (tg-creature-equipment (tg-get-creature 'goblin))))))
 
 ;;; talk handler
 
