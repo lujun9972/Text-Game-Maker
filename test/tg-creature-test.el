@@ -185,5 +185,24 @@
     (should (= (tg-creature-effective-attr creature 'speed nil) 0))
     (should (= (tg-creature-effective-attr creature 'magic nil) 0))))
 
+(ert-deftest test-tg-creature-respawn-fields ()
+  "测试刷新相关字段"
+  (let ((c (make-tg-creature :symbol 'goblin :name "哥布林"
+                              :attr '((hp 30) (attack 5))
+                              :inventory '(sword)
+                              :equipment '(helmet)
+                              :respawn-interval '(8 . 15)
+                              :initial-attr '((hp 30) (attack 5))
+                              :initial-inventory '(sword)
+                              :initial-equipment '(helmet))))
+    (should (equal (tg-creature-respawn-interval c) '(8 . 15)))
+    (should (equal (tg-creature-initial-attr c) '((hp 30) (attack 5))))
+    (should (equal (tg-creature-initial-inventory c) '(sword)))
+    (should (equal (tg-creature-initial-equipment c) '(helmet)))
+    ;; 不刷新生物这些字段为 nil
+    (let ((c2 (make-tg-creature :symbol 'guard)))
+      (should (null (tg-creature-respawn-interval c2)))
+      (should (null (tg-creature-initial-attr c2))))))
+
 (provide 'tg-creature-test)
 ;;; tg-creature-test.el ends here

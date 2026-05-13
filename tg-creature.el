@@ -14,7 +14,11 @@
   behaviors        ;; 行为列表 (aggressive passive neutral)
   death-trigger    ;; 死亡触发器
   shopkeeper       ;; 是否为商人
-  handler)         ;; 自定义处理函数
+  handler          ;; 自定义处理函数
+  respawn-interval ;; 刷新区间 (min . max) cons 或 nil
+  initial-attr     ;; 初始属性快照（解析时 copy-tree 保存）
+  initial-inventory ;; 初始背包（解析时 copy-sequence 保存）
+  initial-equipment) ;; 初始装备（解析时 copy-sequence 保存）
 
 ;;; 属性查询
 
