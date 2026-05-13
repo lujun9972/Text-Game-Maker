@@ -2,6 +2,7 @@
 #+AUTHOR: DarkSun
 #+START: entrance
 #+PLAYER: hero
+#+RESPAWN_DEFAULT: 10-20
 
 * Rooms
 
@@ -155,6 +156,17 @@
 :HANDLER:
 :END:
 
+** cursed-sword
+:PROPERTIES:
+:NAME: 暗黑之剑
+:SYNONYMS: cursed-sword
+:PROPS: no-drop wearable
+:STATE:
+:KEY:
+:EFFECTS: (attack 10)
+:HANDLER:
+:END:
+
 ** bread
 :PROPERTIES:
 :NAME: 干硬的面包
@@ -295,6 +307,7 @@
 :ATTR: hp 25 attack 6 defense 2
 :INVENTORY:
 :EQUIPMENT:
+:RESPAWN: 8-15
 :EXP_REWARD: 18
 :BEHAVIORS: (((hp-below 13) say "你休想活着离开！") (always attack))
 :DEATH_TRIGGER:
@@ -320,7 +333,7 @@
 :NAME: 骷髅王
 :ATTR: hp 80 attack 15 defense 8
 :INVENTORY:
-:EQUIPMENT:
+:EQUIPMENT: cursed-sword
 :EXP_REWARD: 120
 :BEHAVIORS: (((hp-below 30) say "蝼蚁！你以为你能赢？") (always attack))
 :DEATH_TRIGGER:
@@ -334,6 +347,7 @@
 :ATTR: hp 35 attack 9 defense 5
 :INVENTORY:
 :EQUIPMENT:
+:RESPAWN: 15-25
 :EXP_REWARD: 25
 :BEHAVIORS: ((always attack))
 :DEATH_TRIGGER:
@@ -347,6 +361,7 @@
 :ATTR: hp 10 attack 2 defense 0
 :INVENTORY:
 :EQUIPMENT:
+:RESPAWN: 5-10
 :EXP_REWARD: 5
 :BEHAVIORS: (((hp-below 5) move random))
 :DEATH_TRIGGER:

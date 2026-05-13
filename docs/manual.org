@@ -141,6 +141,7 @@ M-x play-sample-game
 | =#+AUTHOR= | 否 | 作者 | =#+AUTHOR: DarkSun= |
 | =#+START= | 是 | 起始房间 symbol | =#+START: entrance= |
 | =#+PLAYER= | 是 | 玩家生物 symbol | =#+PLAYER: hero= |
+| =#+RESPAWN_DEFAULT= | 否 | 全局默认刷新区间 | =#+RESPAWN_DEFAULT: 10-20= |
 
 ** Rooms Section
 
@@ -203,6 +204,7 @@ M-x play-sample-game
 | =BEHAVIORS= | string | 否 | 无 | 行为规则列表 |
 | =DEATH_TRIGGER= | string | 否 | nil | 死亡触发回调 |
 | =SHOPKEEPER= | t/nil | 否 | nil | 是否为商人 |
+| =RESPAWN= | string | 否 | nil | 刷新区间（见下方） |
 | =HANDLER= | string | 否 | nil | 自定义回调 |
 
 =ATTR= 格式为键值对交替：=hp 100 attack 5 defense 3=。
@@ -625,6 +627,25 @@ M-x play-sample-game
 |---+---|
 | =tg-init (org-file)= | 加载配置并初始化 |
 | =tg-start (org-file)= | 加载配置并启动游戏 UI |
+
+* 刷新机制
+
+非商人（非 =SHOPKEEPER=）的生物死亡后可自动刷新。
+
+- 全局默认：通过 =#+RESPAWN_DEFAULT= 设置，格式为 =MIN-MAX=（如 =10-20=）或单个数字（如 =5= 表示 5-5）
+- 单独覆盖：在生物属性中设置 =RESPAWN=，优先于全局默认
+- 商人豁免：=SHOPKEEPER: t= 的生物永远不会刷新
+- 刷新时恢复初始属性、背包和装备
+- 死亡时掉落背包和装备中的物品（=no-drop= 属性的物品除外）
+
+#+begin_src org
+,** goblin
+:PROPERTIES:
+:NAME: 狡猾的哥布林
+:ATTR: hp 25 attack 6 defense 2
+:RESPAWN: 8-15
+:END:
+#+end_src
 
 * 已知限制
 

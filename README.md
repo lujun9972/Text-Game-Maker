@@ -85,7 +85,8 @@ emacs -batch -L . \
   -l test/tg-save-test.el \
   -l test/tg-mode-test.el \
   -l test/tg-integration-test.el \
+  -l test/tg-respawn-test.el \
   -f ert-run-tests-batch-and-exit
 ```
 
-266 个 ERT 测试。
+279 个 ERT 测试。
