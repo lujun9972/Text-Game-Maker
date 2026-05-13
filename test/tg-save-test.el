@@ -335,5 +335,23 @@
                               (lambda (a b) (string< (symbol-name (car a))
                                                      (symbol-name (car b)))))))))
 
+(ert-deftest test-tg-save-respawn-queue ()
+  "测试刷新队列的保存和加载"
+  (tg-save-test-setup)
+  (tg-game-put tg-game :respawn-queue '((goblin . 20)))
+  (let* ((save-file (make-temp-file "tg-save-" nil ".el"))
+         (config-dir (tg-save-test--make-config-dir)))
+    (unwind-protect
+        (progn
+          (tg-save-game save-file)
+          ;; 清空队列验证加载能恢复
+          (tg-game-put tg-game :respawn-queue nil)
+          (should (null (tg-game-get tg-game :respawn-queue)))
+          (tg-load-game save-file config-dir)
+          (should (equal (tg-game-get tg-game :respawn-queue)
+                         '((goblin . 20)))))
+      (delete-file save-file)
+      (delete-directory config-dir t))))
+
 (provide 'tg-save-test)
 ;;; tg-save-test.el ends here

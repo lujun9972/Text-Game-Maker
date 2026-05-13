@@ -17,7 +17,8 @@
         :turns (tg-game-get tg-game :turns)
         :state (tg-game-get tg-game :state)
         :active-buffs (tg-game-get tg-game :active-buffs)
-        :player (tg-game-get tg-game :player)))
+        :player (tg-game-get tg-game :player)
+        :respawn-queue (tg-game-get tg-game :respawn-queue)))
 
 (defun tg-save--collect-rooms ()
   "遍历 tg--rooms 哈希表，收集每个房间的动态字段"
@@ -75,7 +76,8 @@
     (tg-game-put tg-game :turns (plist-get game-data :turns))
     (tg-game-put tg-game :state (plist-get game-data :state))
     (tg-game-put tg-game :active-buffs (plist-get game-data :active-buffs))
-    (tg-game-put tg-game :player (plist-get game-data :player))))
+    (tg-game-put tg-game :player (plist-get game-data :player))
+    (tg-game-put tg-game :respawn-queue (plist-get game-data :respawn-queue))))
 
 (defun tg-save--restore-rooms (data)
   "从存档数据恢复房间动态字段"
