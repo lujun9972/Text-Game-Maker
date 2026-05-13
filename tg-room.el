@@ -77,7 +77,7 @@
           (dolist (sym visible-objs)
             (let ((obj (tg-get-object sym)))
               (when (and obj (not (tg-object-scenery-p obj)))
-                (push (tg-object-name obj) obj-names))))
+                (push (format "%s(%s)" (tg-object-name obj) sym) obj-names))))
           (when obj-names
             (setq desc (concat desc "\n\n这里有："
                                 (mapconcat 'identity (nreverse obj-names) "、")))))))
