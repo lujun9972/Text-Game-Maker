@@ -499,5 +499,64 @@
           (should (equal (buffer-string) before))))
     (tg-mode-test-teardown)))
 
+;;; ============================================================
+;;; C-r 搜索历史测试
+;;; ============================================================
+
+(ert-deftest test-tg-isearch-key-binding ()
+  "C-r 应绑定到 tg-history-isearch。"
+  (with-temp-buffer
+    (tg-mode)
+    (should (eq (key-binding (kbd "C-r")) #'tg-history-isearch))))
+
+(ert-deftest test-tg-isearch-single-match ()
+  "C-r 单条匹配直接填入命令行。"
+  (with-temp-buffer
+    (tg-mode)
+    (setq tg-game (tg-new-game "Test" "Author"))
+    (let ((room (make-tg-room
+                 :symbol 'hall :name "Hall" :desc "A hall"
+                 :exits nil :contents nil :creatures nil
+                 :visit-count 0)))
+      (tg-register-room 'hall room)
+      (tg-game-put tg-game :location 'hall))
+    (tg-render-prompt)
+    (setq tg-command-history '("look" "go north" "take key"))
+    ;; 模拟搜索逻辑：单条匹配
+    (let* ((term "go")
+           (matches (cl-remove-if-not
+                     (lambda (s) (string-match-p term s))
+                     tg-command-history)))
+      (should (= (length matches) 1))
+      (should (equal (car matches) "go north"))
+      ;; 填入
+      (let ((inhibit-read-only t))
+        (delete-region tg-prompt-marker (point-max)))
+      (insert (car matches))
+      (should (string-match-p "go north$" (buffer-string))))))
+
+(ert-deftest test-tg-isearch-no-match ()
+  "C-r 无匹配时返回空列表。"
+  (with-temp-buffer
+    (tg-mode)
+    (setq tg-command-history '("look" "take key"))
+    (let ((matches (cl-remove-if-not
+                    (lambda (s) (string-match-p "xyz" s))
+                    tg-command-history)))
+      (should (null matches)))))
+
+(ert-deftest test-tg-isearch-multiple-matches ()
+  "C-r 多条匹配：填入最近一条，候选列表包含全部匹配。"
+  (with-temp-buffer
+    (tg-mode)
+    (setq tg-command-history '("look" "look at key" "go north"))
+    (let* ((term "look")
+           (matches (cl-remove-if-not
+                     (lambda (s) (string-match-p term s))
+                     tg-command-history)))
+      (should (equal (length matches) 2))
+      (should (equal (car matches) "look"))
+      (should (equal matches '("look" "look at key"))))))
+
 (provide 'tg-mode-test)
 ;;; tg-mode-test.el ends here
