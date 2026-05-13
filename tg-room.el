@@ -87,6 +87,16 @@
         (setq desc (concat desc "\n\n这里有"
                             (if (> (length creatures) 1) "这些生物：" "一个生物：")
                             (mapconcat 'symbol-name creatures "、")))))
+    ;; 添加出口信息
+    (let ((exits (tg-room-exits room)))
+      (when exits
+        (setq desc (concat desc "\n\n出口："
+                            (mapconcat (lambda (e)
+                                         (let ((dest (tg-get-room (cdr e))))
+                                           (concat (symbol-name (car e)) "→"
+                                                   (if dest (tg-room-name dest)
+                                                     (symbol-name (cdr e))))))
+                                       exits "、")))))
     desc))
 
 (defun tg-room-add-object (room obj-sym)
