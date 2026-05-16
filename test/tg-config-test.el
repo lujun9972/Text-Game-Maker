@@ -714,5 +714,134 @@ More content to ignore.
   (should (null (tg-config--parse-respawn-interval "0-0")))   ;; 0-0 → nil
   (should (null (tg-config--parse-respawn-interval "0-5"))))  ;; min < 1 → nil
 
+(ert-deftest test-tg-config-respawn-default-interval ()
+  "测试 #+RESPAWN_DEFAULT 全局默认生效：无 per-creature RESPAWN 的 creature 使用全局默认"
+  (tg-registry-clear)
+  (let ((org-content "#+TITLE: 全局默认测试
+#+RESPAWN_DEFAULT: 10-20
+
+* Creatures
+
+** goblin
+:PROPERTIES:
+:NAME: 哥布林
+:ATTR: hp 30 attack 5
+:INVENTORY: sword
+:EQUIPMENT: helmet
+:END:
+"))
+    (let ((temp-file (make-temp-file "tg-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (write-region org-content nil temp-file)
+            (tg-config-load temp-file)
+            (let ((goblin (tg-get-creature 'goblin)))
+              (should goblin)
+              ;; 使用全局默认
+              (should (equal (tg-creature-respawn-interval goblin) '(10 . 20)))
+              ;; initial-* 快照保存
+              (should (equal (tg-creature-initial-attr goblin) '((hp 30) (attack 5))))
+              (should (equal (tg-creature-initial-inventory goblin) '(sword)))
+              (should (equal (tg-creature-initial-equipment goblin) '(helmet)))))
+        (delete-file temp-file)))))
+
+(ert-deftest test-tg-config-respawn-per-creature-override ()
+  "测试 per-creature RESPAWN 覆盖全局默认"
+  (tg-registry-clear)
+  (let ((org-content "#+TITLE: 覆盖测试
+#+RESPAWN_DEFAULT: 10-20
+
+* Creatures
+
+** goblin
+:PROPERTIES:
+:NAME: 哥布林
+:ATTR: hp 30
+:RESPAWN: 3-5
+:END:
+"))
+    (let ((temp-file (make-temp-file "tg-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (write-region org-content nil temp-file)
+            (tg-config-load temp-file)
+            (let ((goblin (tg-get-creature 'goblin)))
+              (should goblin)
+              ;; per-creature 覆盖全局默认
+              (should (equal (tg-creature-respawn-interval goblin) '(3 . 5)))))
+        (delete-file temp-file)))))
+
+(ert-deftest test-tg-config-respawn-shopkeeper-ignored ()
+  "测试 shopkeeper 有 RESPAWN 属性但不生效"
+  (tg-registry-clear)
+  (let ((org-content "#+TITLE: shopkeeper 测试
+#+RESPAWN_DEFAULT: 10-20
+
+* Creatures
+
+** merchant
+:PROPERTIES:
+:NAME: 商人
+:ATTR: hp 50
+:SHOPKEEPER: t
+:RESPAWN: 5-10
+:END:
+"))
+    (let ((temp-file (make-temp-file "tg-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (write-region org-content nil temp-file)
+            (tg-config-load temp-file)
+            (let ((merchant (tg-get-creature 'merchant)))
+              (should merchant)
+              ;; shopkeeper 不刷新：interval 为 nil
+              (should (null (tg-creature-respawn-interval merchant)))
+              ;; initial-* 不保存
+              (should (null (tg-creature-initial-attr merchant)))))
+        (delete-file temp-file)))))
+
+(ert-deftest test-tg-config-respawn-default-reset ()
+  "测试加载无 RESPAWN_DEFAULT 的游戏后，前次默认值不残留"
+  (tg-registry-clear)
+  ;; 第一次加载：有全局默认
+  (let ((org-content-1 "#+TITLE: 有默认
+#+RESPAWN_DEFAULT: 10-20
+
+* Creatures
+** rat
+:PROPERTIES:
+:NAME: 老鼠
+:ATTR: hp 10
+:END:
+"))
+    (let ((temp-file-1 (make-temp-file "tg-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (write-region org-content-1 nil temp-file-1)
+            (tg-config-load temp-file-1)
+            (should (equal tg-respawn-default-interval '(10 . 20))))
+        (delete-file temp-file-1))))
+  ;; 第二次加载：无全局默认
+  (tg-registry-clear)
+  (let ((org-content-2 "#+TITLE: 无默认
+
+* Creatures
+** goblin
+:PROPERTIES:
+:NAME: 哥布林
+:ATTR: hp 30
+:END:
+"))
+    (let ((temp-file-2 (make-temp-file "tg-test-" nil ".org")))
+      (unwind-protect
+          (progn
+            (write-region org-content-2 nil temp-file-2)
+            (tg-config-load temp-file-2)
+            ;; 前次默认值不残留
+            (should (null tg-respawn-default-interval))
+            (let ((goblin (tg-get-creature 'goblin)))
+              (should (null (tg-creature-respawn-interval goblin)))))
+        (delete-file temp-file-2)))))
+
 (provide 'tg-config-test)
 ;;; test/tg-config-test.el ends here

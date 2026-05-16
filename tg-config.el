@@ -259,6 +259,8 @@ headline: Creatures section 的 headline 元素
                                           tg-respawn-default-interval)
                                      tg-respawn-default-interval
                                    respawn-interval))
+               ;; shopkeeper 始终不刷新，无视 RESPAWN 配置
+               (respawn-interval (if shopkeeper nil respawn-interval))
                ;; 初始快照：仅当有刷新配置时保存
                (initial-attr (when respawn-interval (copy-tree attr)))
                (initial-inventory (when respawn-interval (copy-sequence inventory)))

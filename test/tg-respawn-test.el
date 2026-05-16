@@ -161,4 +161,113 @@
       (should (null captured-output))))
   (tg-registry-clear))
 
+;; ===== 设计规格缺失测试 =====
+
+(ert-deftest test-tg-respawn-schedule-nonexistent ()
+  "测试不存在的 creature 不崩溃"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-game-put tg-game :turns 10)
+  (tg-respawn-schedule 'nonexistent-creature)
+  (should (null (tg-game-get tg-game :respawn-queue)))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-tick-partial ()
+  "测试队列中部分到期部分未到期"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-game-put tg-game :turns 15)
+  ;; goblin 到期(turn 10)，orc 未到期(turn 20)
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :attr '((hp 0))
+                                                    :initial-attr '((hp 30))))
+  (tg-register-creature 'orc (make-tg-creature :symbol 'orc :attr '((hp 0))
+                                                 :initial-attr '((hp 50))))
+  (tg-game-put tg-game :respawn-queue '((goblin . 10) (orc . 20)))
+  (tg-respawn-tick)
+  ;; goblin 已恢复，orc 仍在队列
+  (should (equal (tg-game-get tg-game :respawn-queue) '((orc . 20))))
+  (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
+  (should (tg-creature-dead-p (tg-get-creature 'orc)))  ;; 未恢复
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-schedule-fifo ()
+  "测试 FIFO 顺序：先死的排在前面"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-game-put tg-game :turns 5)
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :attr '((hp 0))
+                                                    :respawn-interval '(5 . 5)))
+  (tg-register-creature 'orc (make-tg-creature :symbol 'orc :attr '((hp 0))
+                                                 :respawn-interval '(3 . 3)))
+  (tg-respawn-schedule 'goblin)
+  (tg-respawn-schedule 'orc)
+  (let ((queue (tg-game-get tg-game :respawn-queue)))
+    (should (eq (caar queue) 'goblin))   ;; 先死，排在前面
+    (should (eq (caadr queue) 'orc)))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-restore-inventory-isolation ()
+  "测试恢复后 inventory/equipment 与 initial-* 独立"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :attr '((hp 0))
+                                                    :inventory nil
+                                                    :equipment nil
+                                                    :initial-attr '((hp 30))
+                                                    :initial-inventory '(sword potion)
+                                                    :initial-equipment '(helmet)))
+  (tg-respawn-restore 'goblin)
+  (let ((c (tg-get-creature 'goblin)))
+    ;; 修改 inventory/equipment 不影响 initial-*
+    (tg-creature-remove-item c 'sword)
+    (setf (tg-creature-equipment c) nil)
+    (should (equal (tg-creature-initial-inventory c) '(sword potion)))
+    (should (equal (tg-creature-initial-equipment c) '(helmet))))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-multi-cycle ()
+  "测试同一 creature 多次死亡-刷新循环"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :name "哥布林"
+                                                    :attr '((hp 0))
+                                                    :inventory nil
+                                                    :equipment nil
+                                                    :respawn-interval '(5 . 5)
+                                                    :initial-attr '((hp 30) (attack 5))
+                                                    :initial-inventory '(sword)
+                                                    :initial-equipment '(helmet)))
+  ;; 第一次：死亡 → schedule → tick → 恢复
+  (tg-game-put tg-game :turns 0)
+  (tg-respawn-schedule 'goblin)
+  (tg-game-put tg-game :turns 5)
+  (tg-respawn-tick)
+  (should (null (tg-game-get tg-game :respawn-queue)))
+  (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
+
+  ;; 模拟第二次死亡（扣血到 0）
+  (tg-creature-take-effect (tg-get-creature 'goblin) '(hp -30))
+  (should (tg-creature-dead-p (tg-get-creature 'goblin)))
+
+  ;; 第二次：schedule → tick → 恢复
+  (tg-respawn-schedule 'goblin)
+  (should (= (length (tg-game-get tg-game :respawn-queue)) 1))
+  (tg-game-put tg-game :turns 10)
+  (tg-respawn-tick)
+  (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
+  (should (equal (tg-creature-inventory (tg-get-creature 'goblin)) '(sword)))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-restore-non-creature ()
+  "测试 tg-creature-p 守卫：registry 中存非 creature struct 时静默跳过"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  ;; 在 creature registry 中放一个非 creature 对象
+  (tg-register-creature 'fake 'not-a-creature)
+  ;; restore 应不崩溃
+  (tg-respawn-restore 'fake)
+  ;; 也没有报错
+  (should t)
+  (tg-registry-clear))
+
 (provide 'tg-respawn-test)
