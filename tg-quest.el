@@ -84,5 +84,17 @@
        (t
         (error "Unknown reward type: %s" type))))))
 
+;;; 存档快照
+
+(defun tg-quest-snapshot (quest)
+  "返回任务动态状态的 alist"
+  (list (cons :status (tg-quest-status quest))
+        (cons :progress (tg-quest-progress quest))))
+
+(defun tg-quest-restore-snapshot (quest snapshot)
+  "从 SNAPSHOT 恢复任务动态状态"
+  (setf (tg-quest-status quest) (cdr (assq :status snapshot)))
+  (setf (tg-quest-progress quest) (cdr (assq :progress snapshot))))
+
 (provide 'tg-quest)
 ;;; tg-quest.el ends here

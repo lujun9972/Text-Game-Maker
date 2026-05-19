@@ -108,5 +108,25 @@ effects 格式：((attr value) (attr value :duration N) ...)"
           ;; tg-creature-take-effect 期望 (attr delta) 列表格式
           (tg-creature-take-effect player (list attr value)))))))
 
+;;; 存档快照
+
+(defun tg-game-snapshot (game)
+  "返回游戏动态状态的 alist"
+  (list (cons :location (tg-game-get game :location))
+        (cons :turns (tg-game-get game :turns))
+        (cons :state (tg-game-get game :state))
+        (cons :active-buffs (tg-game-get game :active-buffs))
+        (cons :player (tg-game-get game :player))
+        (cons :respawn-queue (tg-game-get game :respawn-queue))))
+
+(defun tg-game-restore-snapshot (game snapshot)
+  "从 SNAPSHOT 恢复游戏动态状态"
+  (tg-game-put game :location (cdr (assq :location snapshot)))
+  (tg-game-put game :turns (cdr (assq :turns snapshot)))
+  (tg-game-put game :state (cdr (assq :state snapshot)))
+  (tg-game-put game :active-buffs (cdr (assq :active-buffs snapshot)))
+  (tg-game-put game :player (cdr (assq :player snapshot)))
+  (tg-game-put game :respawn-queue (cdr (assq :respawn-queue snapshot))))
+
 (provide 'tg-game)
 ;;; tg-game.el ends here

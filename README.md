@@ -5,7 +5,7 @@
 ## 特性
 
 - **Org 配置** — 单个 `game.org` 定义完整游戏世界，告别散落的 Elisp 配置文件
-- **cl-defstruct 架构** — 18 个模块，Registry 全局注册表 + 纯数据 struct
+- **cl-defstruct 架构** — 17 个模块，Registry 全局注册表 + 纯数据 struct
 - **27 个内置命令** — 移动、拾取、装备、战斗、对话、商店、任务、存档等
 - **装备动态属性加成** — `tg-creature-effective-attr` 在战斗时动态计算 base + equipment + buff
 - **NPC 行为引擎** — 条件驱动的主动行为（攻击、移动、施放 debuff/buff、对话）
@@ -43,24 +43,25 @@ bash sample/play.sh
 
 | 模块 | 说明 |
 |------|------|
-| `tg.el` | 入口，提供 `tg-start` |
+| `tg.el` | 入口，提供 `tg-start`，注册后处理 handlers |
 | `tg-registry.el` | 全局注册表（零依赖） |
 | `tg-object.el` | 物品系统 |
-| `tg-creature.el` | 生物系统（属性、装备、背包） |
+| `tg-creature.el` | 生物系统（属性、装备、背包、经验等级） |
 | `tg-game.el` | 游戏状态（哈希表） |
 | `tg-room.el` | 房间系统（出口、容器、支撑物） |
-| `tg-action.el` | 动作系统（动词注册 + handler chain） |
+| `tg-action.el` | 动作系统（动词注册 + 内置 handler） |
 | `tg-parser.el` | 自然语言解析器 |
-| `tg-commands.el` | 输入调度 |
+| `tg-commands.el` | 输入调度（handler chain + 后处理 hooks） |
 | `tg-dialog.el` | 对话状态机 |
 | `tg-npc.el` | NPC 行为引擎 |
 | `tg-quest.el` | 任务系统（kill/collect/explore/talk） |
-| `tg-shop.el` | 商店系统 |
-| `tg-level.el` | 经验等级系统 |
-| `tg-save.el` | 存档系统 |
+| `tg-shop.el` | 商店系统（含 NPC 查找） |
+| `tg-combat.el` | 战斗结算（伤害、死亡掉落、反击） |
+| `tg-save.el` | 存档系统（通过 snapshot 接口序列化） |
 | `tg-config.el` | Org 配置解析器 |
 | `tg-config-gen.el` | 配置文件生成器 |
 | `tg-mode.el` | 交互式游戏 major mode（eldoc 支持） |
+| `tg-respawn.el` | 生物刷新系统 |
 
 ## 测试
 
@@ -89,4 +90,4 @@ emacs -batch -L . \
   -f ert-run-tests-batch-and-exit
 ```
 
-279 个 ERT 测试。
+290 个 ERT 测试。

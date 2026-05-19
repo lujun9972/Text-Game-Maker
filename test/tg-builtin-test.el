@@ -13,7 +13,6 @@
 (require 'tg-dialog)
 (require 'tg-shop)
 (require 'tg-quest)
-(require 'tg-level)
 
 ;;; 测试辅助
 

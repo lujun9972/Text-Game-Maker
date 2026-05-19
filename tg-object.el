@@ -199,5 +199,19 @@ to-room: 目标 room 结构"
   (aset to-room 6 (append (aref to-room 6) (list obj-sym)))
   nil)
 
+;;; 存档快照
+
+(defun tg-object-snapshot (obj)
+  "返回对象动态状态的 alist"
+  (list (cons :state (tg-object-state obj))
+        (cons :contents (tg-object-contents obj))
+        (cons :supports (tg-object-supports obj))))
+
+(defun tg-object-restore-snapshot (obj snapshot)
+  "从 SNAPSHOT 恢复对象动态状态"
+  (setf (tg-object-state obj) (cdr (assq :state snapshot)))
+  (setf (tg-object-contents obj) (cdr (assq :contents snapshot)))
+  (setf (tg-object-supports obj) (cdr (assq :supports snapshot))))
+
 (provide 'tg-object)
 ;;; tg-object.el ends here

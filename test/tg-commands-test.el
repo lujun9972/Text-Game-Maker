@@ -32,6 +32,10 @@
   (setq tg-commands-test-output nil)
   (setq tg-message-hook nil)
 
+  ;; 注册后处理 handlers（确保 turn 递增等行为可用）
+  (setq tg-post-action-handlers nil)
+  (tg-register-post-action-handler (lambda (game) (tg-game-incf game :turns)))
+
   ;; 创建测试游戏
   (setq tg-game (tg-new-game "Test Game" "Test Author"))
   (tg-game-put tg-game :state 'playing)

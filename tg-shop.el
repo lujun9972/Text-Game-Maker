@@ -3,11 +3,43 @@
 (require 'cl-lib)
 (require 'tg-registry)
 (require 'tg-creature)
+(require 'tg-room)
+(require 'tg-game)
 
 (cl-defstruct tg-shop
   npc-symbol       ;; NPC symbol
   sell-rate        ;; 出售价格比例 (0.5 表示原价 50%)
   goods)           ;; 商品清单 ((item-symbol . price) ...)
+
+;;; 商店查找
+
+(defun tg-shop-find-for-npc (npc-sym location)
+  "查找指定NPC或当前房间中商人的商店。
+NPC-SYM: 可选，指定NPC的symbol
+LOCATION: 房间symbol
+返回：shop-symbol 或 nil"
+  (let (shop-sym)
+    ;; 1. 指定了NPC → 直接查找其商店
+    (when npc-sym
+      (let ((creature (tg-get-creature npc-sym)))
+        (when (and creature (tg-creature-shopkeeper creature))
+          (maphash (lambda (sym s)
+                     (when (eq (tg-shop-npc-symbol s) npc-sym)
+                       (setq shop-sym sym)))
+                   tg--shops))))
+    ;; 2. 没指定或没找到 → 在房间找商人
+    (unless shop-sym
+      (let ((room (tg-get-room location)))
+        (when room
+          (dolist (c-sym (tg-room-creatures room))
+            (unless shop-sym
+              (let ((c (tg-get-creature c-sym)))
+                (when (and c (tg-creature-shopkeeper c))
+                  (maphash (lambda (sym s)
+                             (when (eq (tg-shop-npc-symbol s) c-sym)
+                               (setq shop-sym sym)))
+                           tg--shops))))))))
+    shop-sym))
 
 ;;; 商店购买
 

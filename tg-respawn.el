@@ -28,17 +28,17 @@
         (tg-game-put tg-game :respawn-queue
                      (append queue (list (cons creature-symbol respawn-turn))))))))
 
-(defun tg-respawn-tick ()
+(defun tg-respawn-tick (game)
   "每回合调用，检查并执行到期的刷新。
-通过全局 tg-game 访问游戏状态。"
-  (let* ((current-turn (tg-game-get tg-game :turns))
-         (queue (tg-game-get tg-game :respawn-queue))
+GAME: 游戏状态哈希表"
+  (let* ((current-turn (tg-game-get game :turns))
+         (queue (tg-game-get game :respawn-queue))
          (remaining nil))
     (dolist (entry queue)
       (if (<= (cdr entry) current-turn)
           (tg-respawn-restore (car entry))
         (push entry remaining)))
-    (tg-game-put tg-game :respawn-queue (nreverse remaining))))
+    (tg-game-put game :respawn-queue (nreverse remaining))))
 
 (defun tg-respawn-restore (creature-symbol)
   "恢复 creature 到初始状态。

@@ -75,7 +75,7 @@
                                                     :initial-equipment '(helmet)))
   ;; 手动加入队列，respawn-turn = 15（已过期）
   (tg-game-put tg-game :respawn-queue '((goblin . 15)))
-  (tg-respawn-tick)
+  (tg-respawn-tick tg-game)
   ;; 队列应清空
   (should (null (tg-game-get tg-game :respawn-queue)))
   ;; creature 应恢复
@@ -94,7 +94,7 @@
   (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :attr '((hp 0))
                                                     :initial-attr '((hp 30))))
   (tg-game-put tg-game :respawn-queue '((goblin . 20)))
-  (tg-respawn-tick)
+  (tg-respawn-tick tg-game)
   ;; 队列不变
   (should (equal (tg-game-get tg-game :respawn-queue) '((goblin . 20))))
   ;; creature 仍为死亡
@@ -183,7 +183,7 @@
   (tg-register-creature 'orc (make-tg-creature :symbol 'orc :attr '((hp 0))
                                                  :initial-attr '((hp 50))))
   (tg-game-put tg-game :respawn-queue '((goblin . 10) (orc . 20)))
-  (tg-respawn-tick)
+  (tg-respawn-tick tg-game)
   ;; goblin 已恢复，orc 仍在队列
   (should (equal (tg-game-get tg-game :respawn-queue) '((orc . 20))))
   (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
@@ -241,7 +241,7 @@
   (tg-game-put tg-game :turns 0)
   (tg-respawn-schedule 'goblin)
   (tg-game-put tg-game :turns 5)
-  (tg-respawn-tick)
+  (tg-respawn-tick tg-game)
   (should (null (tg-game-get tg-game :respawn-queue)))
   (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
 
@@ -253,7 +253,7 @@
   (tg-respawn-schedule 'goblin)
   (should (= (length (tg-game-get tg-game :respawn-queue)) 1))
   (tg-game-put tg-game :turns 10)
-  (tg-respawn-tick)
+  (tg-respawn-tick tg-game)
   (should (= (tg-creature-attr-get (tg-get-creature 'goblin) 'hp) 30))
   (should (equal (tg-creature-inventory (tg-get-creature 'goblin)) '(sword)))
   (tg-registry-clear))

@@ -19,7 +19,7 @@
 (require 'tg-dialog)
 (require 'tg-shop)
 (require 'tg-quest)
-(require 'tg-level)
+(require 'tg-combat)
 
 (cl-defstruct tg-action
   id
@@ -377,7 +377,7 @@ WORD: 动作词或同义词"
           t)))))
 
 (defun tg-action--handler-attack (ast game)
-  "攻击生物：计算伤害、反击、死亡掉落和经验奖励"
+  "攻击生物：输入验证后委托给 tg-combat-resolve"
   (let ((do-key (plist-get ast :do-key)))
     (cond
      ((not do-key)
@@ -393,70 +393,7 @@ WORD: 动作词或同义词"
          ((tg-creature-dead-p creature)
           (tg-message "%s 已经死了。" (tg-creature-name creature)))
          (t
-          (let* ((player (tg-player game))
-                 (active-buffs (tg-game-get game :active-buffs))
-                 ;; 将 game active-buffs 格式转换为 effective-attr 期望的格式
-                 ;; game 格式: ((attr . (:delta val :remaining N)) ...)
-                 ;; 期望格式: ((attr-key value) ...)
-                 (buff-values
-                  (mapcar (lambda (b) (list (car b) (plist-get (cdr b) :delta)))
-                          active-buffs))
-                 (player-attack (tg-creature-effective-attr player 'attack buff-values))
-                 (npc-defense (tg-creature-attr-get creature 'defense))
-                 (damage (max 1 (- player-attack (or npc-defense 0)))))
-            ;; 对 NPC 造成伤害
-            (tg-creature-take-effect creature (list 'hp (- damage)))
-            (tg-message "你攻击了%s，造成了%d点伤害。"
-                        (tg-creature-name creature) damage)
-            ;; 检查 NPC 是否死亡
-            (if (tg-creature-dead-p creature)
-                (let ((room (tg-get-room (tg-game-get game :location))))
-                  (tg-message "%s被击败了！" (tg-creature-name creature))
-                  ;; 掉落物品（背包 + 装备，含 no-drop 过滤）
-                  (let ((all-items (append (tg-creature-inventory creature)
-                                           (tg-creature-equipment creature)))
-                        (remaining-items nil))
-                    (dolist (item-sym all-items)
-                      (let ((obj (tg-get-object item-sym)))
-                        (if (and obj (memq 'no-drop (tg-object-props obj)))
-                            (push item-sym remaining-items)  ;; no-drop：保留
-                          ;; 掉落
-                          (tg-room-add-object room item-sym)
-                          (tg-message "%s掉落了%s。"
-                                      (tg-creature-name creature)
-                                      (tg-object-name obj)))))
-                    ;; 清空并保留 no-drop 物品
-                    (setf (tg-creature-inventory creature)
-                          (cl-intersection (tg-creature-inventory creature) remaining-items))
-                    (setf (tg-creature-equipment creature)
-                          (cl-intersection (tg-creature-equipment creature) remaining-items)))
-                  ;; 经验奖励
-                  (let ((exp-reward (tg-creature-exp-reward creature)))
-                    (when exp-reward
-                      (tg-creature-take-effect player (list 'exp exp-reward))
-                      (tg-message "获得%d点经验。" exp-reward)
-                      (tg-level-check player)))
-                  ;; 追踪击杀任务
-                  (tg-track-quest 'kill do-key)
-                  ;; 触发死亡触发器
-                  (let ((death-trigger (tg-creature-death-trigger creature)))
-                    (when (and death-trigger (functionp death-trigger))
-                      (funcall death-trigger creature game)))
-                  ;; 触发刷新调度
-                  (tg-respawn-schedule do-key))
-              ;; NPC 反击
-              (let* ((npc-attack (tg-creature-attr-get creature 'attack))
-                     (player-defense (tg-creature-effective-attr player 'defense buff-values))
-                     (counter-damage (max 0 (- (or npc-attack 0) player-defense))))
-                (when (> counter-damage 0)
-                  (tg-creature-take-effect player (list 'hp (- counter-damage)))
-                  (tg-message "%s反击了你，造成了%d点伤害。"
-                              (tg-creature-name creature) counter-damage))
-                ;; 检查玩家是否死亡
-                (when (tg-creature-dead-p player)
-                  (tg-message "你被%s击败了！游戏结束。" (tg-creature-name creature))
-                  (tg-game-put game :state 'game-over))))
-            t))))))))
+          (tg-combat-resolve do-key (tg-player game) game))))))))
 
 (defun tg-action--handler-talk (ast game)
   "与NPC对话"
@@ -488,29 +425,7 @@ WORD: 动作词或同义词"
      ((not player)
       (tg-message "没有玩家。"))
      (t
-      ;; 查找关联的 NPC 商店
-      (let ((npc-sym io-key)
-            shop-sym)
-        ;; 如果指定了 NPC，查找其商店
-        (when npc-sym
-          (let ((creature (tg-get-creature npc-sym)))
-            (when (and creature (tg-creature-shopkeeper creature))
-              ;; 在所有商店中查找属于该 NPC 的商店
-              (maphash (lambda (sym s)
-                         (when (eq (tg-shop-npc-symbol s) npc-sym)
-                           (setq shop-sym sym)))
-                       tg--shops))))
-        ;; 如果没指定 NPC，查找当前房间中的商人
-        (unless shop-sym
-          (let ((room (tg-get-room (tg-game-get game :location))))
-            (dolist (c-sym (tg-room-creatures room))
-              (unless shop-sym
-                (let ((c (tg-get-creature c-sym)))
-                  (when (and c (tg-creature-shopkeeper c))
-                    (maphash (lambda (sym s)
-                               (when (eq (tg-shop-npc-symbol s) c-sym)
-                                 (setq shop-sym sym)))
-                             tg--shops)))))))
+      (let ((shop-sym (tg-shop-find-for-npc io-key (tg-game-get game :location))))
         (cond
          ((not shop-sym)
           (tg-message "这里没有商人。"))
@@ -537,28 +452,7 @@ WORD: 动作词或同义词"
      ((not (tg-creature-has-item player do-key))
       (tg-message "你没有这个东西。"))
      (t
-      ;; 查找关联的 NPC 商店
-      (let ((npc-sym io-key)
-            shop-sym)
-        ;; 如果指定了 NPC，查找其商店
-        (when npc-sym
-          (let ((creature (tg-get-creature npc-sym)))
-            (when (and creature (tg-creature-shopkeeper creature))
-              (maphash (lambda (sym s)
-                         (when (eq (tg-shop-npc-symbol s) npc-sym)
-                           (setq shop-sym sym)))
-                       tg--shops))))
-        ;; 如果没指定 NPC，查找当前房间中的商人
-        (unless shop-sym
-          (let ((room (tg-get-room (tg-game-get game :location))))
-            (dolist (c-sym (tg-room-creatures room))
-              (unless shop-sym
-                (let ((c (tg-get-creature c-sym)))
-                  (when (and c (tg-creature-shopkeeper c))
-                    (maphash (lambda (sym s)
-                               (when (eq (tg-shop-npc-symbol s) c-sym)
-                                 (setq shop-sym sym)))
-                             tg--shops)))))))
+      (let ((shop-sym (tg-shop-find-for-npc io-key (tg-game-get game :location))))
         (cond
          ((not shop-sym)
           (tg-message "这里没有商人。"))
@@ -574,27 +468,8 @@ WORD: 动作词或同义词"
 
 (defun tg-action--handler-shop (ast game)
   "列出当前房间商人的商品"
-  (let ((do-key (plist-get ast :do-key))
-        shop-sym)
-    ;; 如果指定了 NPC
-    (when do-key
-      (let ((creature (tg-get-creature do-key)))
-        (when (and creature (tg-creature-shopkeeper creature))
-          (maphash (lambda (sym s)
-                     (when (eq (tg-shop-npc-symbol s) do-key)
-                       (setq shop-sym sym)))
-                   tg--shops))))
-    ;; 查找当前房间中的商人
-    (unless shop-sym
-      (let ((room (tg-get-room (tg-game-get game :location))))
-        (dolist (c-sym (tg-room-creatures room))
-          (unless shop-sym
-            (let ((c (tg-get-creature c-sym)))
-              (when (and c (tg-creature-shopkeeper c))
-                (maphash (lambda (sym s)
-                           (when (eq (tg-shop-npc-symbol s) c-sym)
-                             (setq shop-sym sym)))
-                         tg--shops)))))))
+  (let* ((do-key (plist-get ast :do-key))
+         (shop-sym (tg-shop-find-for-npc do-key (tg-game-get game :location))))
     (cond
      ((not shop-sym)
       (tg-message "这里没有商人。"))

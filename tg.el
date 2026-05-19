@@ -22,18 +22,30 @@
 (require 'tg-dialog)
 (require 'tg-npc)
 (require 'tg-quest)
+(require 'tg-combat)
 (require 'tg-shop)
-(require 'tg-level)
 (require 'tg-respawn)
 (require 'tg-save)
 (require 'tg-config)
 (require 'tg-config-gen)
 (require 'tg-mode)
 
+;;; 注册默认后处理 handlers
+
+(tg-register-post-action-handler #'tg-npc-run-behaviors)
+(tg-register-post-action-handler #'tg-buffs-tick)
+(tg-register-post-action-handler (lambda (game) (tg-game-incf game :turns)))
+(tg-register-post-action-handler #'tg-respawn-tick)
+
 (defun tg-init (org-config-file)
   "从 ORG-CONFIG-FILE 加载游戏配置并初始化。
 加载 Org 配置、注册内置动词，返回游戏状态。"
   (tg-registry-clear)
+  (setq tg-post-action-handlers nil)
+  (tg-register-post-action-handler #'tg-npc-run-behaviors)
+  (tg-register-post-action-handler #'tg-buffs-tick)
+  (tg-register-post-action-handler (lambda (game) (tg-game-incf game :turns)))
+  (tg-register-post-action-handler #'tg-respawn-tick)
   (setq tg-game (tg-config-load org-config-file))
   (tg-register-builtins)
   tg-game)

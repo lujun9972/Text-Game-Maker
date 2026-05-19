@@ -119,5 +119,19 @@
   (setf (tg-room-creatures room)
         (delq creature-sym (tg-room-creatures room))))
 
+;;; 存档快照
+
+(defun tg-room-snapshot (room)
+  "返回房间动态状态的 alist"
+  (list (cons :visit-count (tg-room-visit-count room))
+        (cons :contents (tg-room-contents room))
+        (cons :creatures (tg-room-creatures room))))
+
+(defun tg-room-restore-snapshot (room snapshot)
+  "从 SNAPSHOT 恢复房间动态状态"
+  (setf (tg-room-visit-count room) (cdr (assq :visit-count snapshot)))
+  (setf (tg-room-contents room) (cdr (assq :contents snapshot)))
+  (setf (tg-room-creatures room) (cdr (assq :creatures snapshot))))
+
 (provide 'tg-room)
 ;;; tg-room.el ends here

@@ -3,7 +3,6 @@
 (require 'ert)
 (require 'tg-registry)
 (require 'tg-creature)
-(require 'tg-level)
 
 (ert-deftest test-tg-level-check-level-up ()
   "测试经验足够时自动升级"

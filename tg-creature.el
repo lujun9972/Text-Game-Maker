@@ -87,7 +87,9 @@ effect 格式：(attr-key delta-value)
 考虑基础属性 + 装备效果 + 临时buff
 creature: 生物结构
 attr-key: 属性键（hp/attack/defense等）
-active-buffs: 当前激活的buff列表 ((attr-key value) ...）
+active-buffs: buff列表，支持两种格式：
+  简单格式: ((attr-key value) ...)
+  game格式: ((attr-key . (:delta value :remaining N)) ...)
 返回：叠加后的属性值（未知属性返回0）"
   (let ((base-value (or (tg-creature-attr-get creature attr-key) 0))
         (equipment-bonus 0)
@@ -100,12 +102,80 @@ active-buffs: 当前激活的buff列表 ((attr-key value) ...）
             (dolist (effect effects)
               (when (eq (car effect) attr-key)
                 (setq equipment-bonus (+ equipment-bonus (cadr effect)))))))))
-    ;; 遍历buff计算加成
+    ;; 遍历buff计算加成（兼容两种格式）
     (dolist (buff active-buffs)
       (when (eq (car buff) attr-key)
-        (setq buff-bonus (+ buff-bonus (cadr buff)))))
+        (let ((val (cdr buff)))
+          (setq buff-bonus
+                (+ buff-bonus
+                   (if (and (consp val) (keywordp (car val)))
+                       (plist-get val :delta)   ;; game格式: (attr . (:delta v ...))
+                     (car val)))))))             ;; 简单格式: (attr value)
     ;; 返回总和
     (+ base-value equipment-bonus buff-bonus)))
+
+;;; 经验等级系统
+
+(defvar tg-level-exp-table '(0 100 250 500 850 1300 1900 2700 3800 5000)
+  "升级所需经验表
+索引 0 对应等级 1，索引 1 对应等级 2，依此类推
+例如：等级 1->2 需要 100 经验，等级 2->3 需要 250 经验")
+
+(defvar tg-level-bonus-points-per-level 3
+  "每次升级获得的自由属性点数")
+
+(defvar tg-level-auto-upgrade-attrs '((hp 5))
+  "每次升级自动提升的属性增量
+格式：((attr-key delta) ...)
+例如：((hp 5)) 表示每次升级 hp +5")
+
+(defun tg-level-check (creature)
+  "检查生物经验值并自动升级
+creature: 生物结构体
+当 exp >= exp-table[level] 时触发升级，每次升级：
+1. level +1
+2. bonus-points + bonus-points-per-level
+3. auto-upgrade-attrs 各自增加对应值"
+  (let ((level (tg-creature-attr-get creature 'level))
+        (exp (tg-creature-attr-get creature 'exp)))
+    (while (and (< level (length tg-level-exp-table))
+                (>= exp (nth level tg-level-exp-table)))
+      ;; 升级：level +1
+      (tg-creature-take-effect creature (list 'level 1))
+      (cl-incf level)
+      ;; 赠送自由属性点
+      (tg-creature-take-effect creature (list 'bonus-points tg-level-bonus-points-per-level))
+      ;; 自动提升属性
+      (dolist (upgrade tg-level-auto-upgrade-attrs)
+        (tg-creature-take-effect creature upgrade)))))
+
+(defun tg-level-upgrade (creature attr-key delta)
+  "使用 bonus-points 手动升级属性
+creature: 生物结构体
+attr-key: 要升级的属性键（如 'hp, 'attack）
+delta: 要增加的数值
+要求：creature 必须有足够的 bonus-points（每点消耗 1 bonus-point）"
+  (let ((bonus-points (tg-creature-attr-get creature 'bonus-points)))
+    (if (and bonus-points (>= bonus-points delta))
+        (progn
+          (tg-creature-take-effect creature (list 'bonus-points (- delta)))
+          (tg-creature-take-effect creature (list attr-key delta))
+          t)
+      nil)))
+
+;;; 存档快照
+
+(defun tg-creature-snapshot (creature)
+  "返回生物动态状态的 alist"
+  (list (cons :attr (tg-creature-attr creature))
+        (cons :inventory (tg-creature-inventory creature))
+        (cons :equipment (tg-creature-equipment creature))))
+
+(defun tg-creature-restore-snapshot (creature snapshot)
+  "从 SNAPSHOT 恢复生物动态状态"
+  (setf (tg-creature-attr creature) (cdr (assq :attr snapshot)))
+  (setf (tg-creature-inventory creature) (cdr (assq :inventory snapshot)))
+  (setf (tg-creature-equipment creature) (cdr (assq :equipment snapshot))))
 
 (provide 'tg-creature)
 ;;; tg-creature.el ends here

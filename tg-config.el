@@ -11,7 +11,6 @@
 (require 'tg-shop)
 (require 'tg-quest)
 (require 'tg-game)
-(require 'tg-level)
 (require 'tg-respawn)
 
 ;;; 解析工具函数

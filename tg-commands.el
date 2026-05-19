@@ -29,6 +29,21 @@
 (defvar tg-message-hook nil
   "消息输出后调用的钩子函数列表。每个函数接收一个参数：text（已含换行的消息字符串）。")
 
+;;; 后处理 Handler 注册
+
+(defvar tg-post-action-handlers nil
+  "非被动命令执行后的处理器有序列表。
+每个元素是接受 (game) 参数的函数。
+执行顺序 = 注册顺序（append）。")
+
+(defun tg-register-post-action-handler (handler)
+  "向后处理链追加 HANDLER。HANDLER 应接受 (game) 参数。"
+  (cl-pushnew handler tg-post-action-handlers :test #'equal)
+  ;; 保证追加顺序：先移除再添加到末尾
+  (setq tg-post-action-handlers
+        (append (cl-remove handler tg-post-action-handlers :test #'equal)
+                (list handler))))
+
 ;;; 全局输出函数
 
 (defun tg-message (format &rest args)
@@ -180,7 +195,7 @@ action handler 可以抛出 'tg-action-abort 来跳过 after-handler。"
 (defun tg-dispatch (ast game)
   "Handler Chain 调度引擎。
 按顺序执行：error → room-before → io → do → action → after
-非被动命令后执行：NPC 行为 → buffs-tick → 回合递增
+非被动命令后执行 tg-post-action-handlers 中的所有处理器。
 
 AST: 解析后的动作结构
 GAME: 游戏状态哈希表
@@ -203,16 +218,13 @@ GAME: 游戏状态哈希表
         (tg-run-action ast game)
         (tg-run-room-after ast game))))
 
-    ;; 非被动命令后的后处理
+    ;; 非被动命令后的后处理（通过注册的 handler 列表）
     (let ((action-id (plist-get ast :action))
           (passive-list tg-passive-actions))
-      ;; 检查是否是被动命令（同时支持 symbol 和 string）
       (unless (or (member action-id passive-list)
                   (member (format "%s" action-id) passive-list))
-        (tg-npc-run-behaviors game)
-        (tg-buffs-tick game)
-        (tg-game-incf game :turns)
-        (tg-respawn-tick)))))
+        (dolist (handler tg-post-action-handlers)
+          (funcall handler game))))))
 
 (provide 'tg-commands)
 ;;; tg-commands.el ends here
