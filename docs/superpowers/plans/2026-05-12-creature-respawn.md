@@ -29,11 +29,11 @@
 ```elisp
   (cl-defstruct tg-creature
     ...
-    handler)         ;; 自定义处理函数
+    handler          ;; 自定义处理函数
     respawn-interval ;; 刷新区间 (min . max) cons 或 nil
     initial-attr     ;; 初始属性快照（解析时 copy-tree 保存）
     initial-inventory ;; 初始背包（解析时 copy-sequence 保存）
-    initial-equipment ;; 初始装备（解析时 copy-sequence 保存）
+    initial-equipment) ;; 初始装备（解析时 copy-sequence 保存）
 ```
 
 - [ ] **步骤 2：编写 struct 新字段测试**
@@ -81,7 +81,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
 **依赖：** 任务 1
 **文件集：** `tg-respawn.el`, `test/tg-respawn-test.el`
 **导出/变更接口：** `tg-respawn.el::tg-respawn-schedule`, `tg-respawn.el::tg-respawn-tick`, `tg-respawn.el::tg-respawn-restore`, `tg-respawn.el::tg-respawn-default-interval`
-**消费接口：** `tg-creature.el::tg-creature-dead-p`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-registry.el::tg-get-creature`
+**消费接口：** `tg-creature.el::tg-creature-dead-p`, `tg-game.el::tg-game-get`, `tg-game.el::tg-game-put`, `tg-registry.el::tg-get-creature`, `tg-room.el::tg-room-creatures`
 **复杂度：** standard
 
 **文件：**
@@ -106,6 +106,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
 (require 'tg-game)
 (require 'tg-creature)
 (require 'tg-respawn)
+(require 'tg-commands)                  ;; tg-message for notification mock
 
 (ert-deftest test-tg-respawn-schedule-basic ()
   "测试死亡调度加入队列"
@@ -113,7 +114,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
   (setq tg-game (tg-new-game "Test" "Author"))
   (tg-game-put tg-game :turns 10)
   (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :name "哥布林"
-                                                    :attr '((hp 30))
+                                                    :attr '((hp 0))  ;; 已死亡
                                                     :respawn-interval '(5 . 10)))
   (tg-respawn-schedule 'goblin)
   (let ((queue (tg-game-get tg-game :respawn-queue)))
@@ -128,7 +129,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
   (tg-registry-clear)
   (setq tg-game (tg-new-game "Test" "Author"))
   (tg-register-creature 'guard (make-tg-creature :symbol 'guard :name "守卫"
-                                                   :attr '((hp 50))
+                                                   :attr '((hp 0))  ;; 已死亡
                                                    :respawn-interval nil))
   (tg-respawn-schedule 'guard)
   (should (null (tg-game-get tg-game :respawn-queue)))
@@ -139,7 +140,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
   (tg-registry-clear)
   (setq tg-game (tg-new-game "Test" "Author"))
   (tg-register-creature 'merchant (make-tg-creature :symbol 'merchant :name "商人"
-                                                      :attr '((hp 50))
+                                                      :attr '((hp 0))  ;; 已死亡
                                                       :respawn-interval '(5 . 10)
                                                       :shopkeeper t))
   (tg-respawn-schedule 'merchant)
@@ -152,7 +153,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
   (setq tg-game (tg-new-game "Test" "Author"))
   (tg-game-put tg-game :turns 10)
   (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :name "哥布林"
-                                                    :attr '((hp 30))
+                                                    :attr '((hp 0))  ;; 已死亡
                                                     :respawn-interval '(5 . 10)))
   (tg-respawn-schedule 'goblin)
   (tg-respawn-schedule 'goblin)  ;; 第二次应跳过
@@ -216,6 +217,50 @@ git commit -m "feat: add respawn fields to tg-creature struct"
     (should (equal (tg-creature-initial-attr c) '((hp 30) (attack 5)))))
   (tg-registry-clear))
 
+(ert-deftest test-tg-respawn-schedule-alive ()
+  "测试活着 creature 的 dead-p 守卫"
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  (tg-game-put tg-game :turns 10)
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin
+                                                    :attr '((hp 30))  ;; 还活着
+                                                    :respawn-interval '(5 . 10)))
+  (tg-respawn-schedule 'goblin)
+  (should (null (tg-game-get tg-game :respawn-queue)))
+  (tg-registry-clear))
+
+(ert-deftest test-tg-respawn-restore-notification ()
+  "测试同房间刷新有通知，异房间无通知"
+  (require 'tg-room)
+  (tg-registry-clear)
+  (setq tg-game (tg-new-game "Test" "Author"))
+  ;; 创建房间
+  (tg-register-room 'forest (make-tg-room :symbol 'forest :name "森林" :creatures '(goblin)))
+  (tg-register-room 'cave (make-tg-room :symbol 'cave :name "洞穴"))
+  ;; 创建已死亡 creature
+  (tg-register-creature 'goblin (make-tg-creature :symbol 'goblin :name "哥布林"
+                                                    :attr '((hp 0))
+                                                    :initial-attr '((hp 30))
+                                                    :respawn-interval '(5 . 10)))
+  ;; Mock tg-message 捕获输出
+  (let ((captured-output nil))
+    (cl-letf (((symbol-function 'tg-message)
+               (lambda (fmt &rest args)
+                 (setq captured-output (apply #'format fmt args)))))
+      ;; 场景 1：玩家与 creature 同房间 — 应通知
+      (tg-game-put tg-game :location 'forest)
+      (tg-respawn-restore 'goblin)
+      (should captured-output)
+      (should (string-match "哥布林" captured-output))
+      ;; 重置
+      (setq captured-output nil)
+      (setf (tg-creature-attr (tg-get-creature 'goblin)) '((hp 0)))
+      ;; 场景 2：玩家在另一个房间 — 不通知
+      (tg-game-put tg-game :location 'cave)
+      (tg-respawn-restore 'goblin)
+      (should (null captured-output))))
+  (tg-registry-clear))
+
 (provide 'tg-respawn-test)
 ```
 
@@ -225,7 +270,7 @@ git commit -m "feat: add respawn fields to tg-creature struct"
 emacs -batch -L . -l test/tg-respawn-test.el -f ert-run-tests-batch-and-exit 2>&1 | tail -3
 ```
 
-预期：FAILED（文件不存在）
+预期：FAILED（tg-respawn.el 模块不存在）
 
 - [ ] **步骤 3：创建 tg-respawn.el**
 
@@ -236,6 +281,7 @@ emacs -batch -L . -l test/tg-respawn-test.el -f ert-run-tests-batch-and-exit 2>&
 (require 'tg-registry)
 (require 'tg-game)
 (require 'tg-creature)
+(require 'tg-room)
 
 (defvar tg-respawn-default-interval nil
   "默认刷新区间 (min . max) 或 nil（不刷新）")
@@ -245,6 +291,7 @@ emacs -batch -L . -l test/tg-respawn-test.el -f ert-run-tests-batch-and-exit 2>&
 通过全局 tg-game 访问游戏状态。"
   (let ((creature (tg-get-creature creature-symbol)))
     (when (and creature
+               (tg-creature-dead-p creature)  ;; 只调度已死亡的
                (tg-creature-respawn-interval creature)  ;; 有刷新配置
                (not (tg-creature-shopkeeper creature))   ;; 非 shopkeeper
                (not (assq creature-symbol (tg-game-get tg-game :respawn-queue)))) ;; 防重复
@@ -256,7 +303,7 @@ emacs -batch -L . -l test/tg-respawn-test.el -f ert-run-tests-batch-and-exit 2>&
              (respawn-turn (+ current-turn random-offset))
              (queue (tg-game-get tg-game :respawn-queue)))
         (tg-game-put tg-game :respawn-queue
-                     (cons (cons creature-symbol respawn-turn) queue))))))
+                     (append queue (list (cons creature-symbol respawn-turn)))))))))
 
 (defun tg-respawn-tick ()
   "每回合调用，检查并执行到期的刷新。
@@ -268,19 +315,19 @@ emacs -batch -L . -l test/tg-respawn-test.el -f ert-run-tests-batch-and-exit 2>&
       (if (<= (cdr entry) current-turn)
           (tg-respawn-restore (car entry))
         (push entry remaining)))
-    (tg-game-put tg-game :respawn-queue (nreverse remaining))))
+    (tg-game-put tg-game :respawn-queue (nreverse remaining)))))
 
 (defun tg-respawn-restore (creature-symbol)
   "恢复 creature 到初始状态。
 通过全局 tg-game 访问游戏状态。
 tg-message 运行时可用（不 require tg-commands 避免循环依赖）。"
   (let ((creature (tg-get-creature creature-symbol)))
-    (when creature
+    (when (and creature (tg-creature-p creature))  ;; 必须是 creature struct
       ;; 恢复 attr（copy-tree 深拷贝）
       (when (tg-creature-initial-attr creature)
         (setf (tg-creature-attr creature)
               (copy-tree (tg-creature-initial-attr creature))))
-      ;; 恢复 inventory（copy-sequence，元素是 symbol/immutable）
+      ;; 恢复 inventory（copy-sequence，元素是 symbol/immutable；若变为 mutable struct 需升级为 copy-tree）
       (when (tg-creature-initial-inventory creature)
         (setf (tg-creature-inventory creature)
               (copy-sequence (tg-creature-initial-inventory creature))))
@@ -342,7 +389,10 @@ git commit -m "feat: add tg-respawn module with schedule/tick/restore"
   (should (equal (tg-config--parse-respawn-interval "10") '(10 . 10)))
   (should (null (tg-config--parse-respawn-interval nil)))
   (should (null (tg-config--parse-respawn-interval "")))
-  (should (null (tg-config--parse-respawn-interval "15-8"))))  ;; N > M → nil
+  (should (null (tg-config--parse-respawn-interval "15-8")))  ;; N > M → nil
+  (should (null (tg-config--parse-respawn-interval "0")))     ;; 0 → nil（无效间隔）
+  (should (null (tg-config--parse-respawn-interval "0-0")))   ;; 0-0 → nil
+  (should (null (tg-config--parse-respawn-interval "0-5")))   ;; min < 1 → nil
 ```
 
 - [ ] **步骤 2：运行测试验证失败**
@@ -371,11 +421,11 @@ str: \"8-15\" → (8 . 15), \"10\" → (10 . 10), nil/\"\" → nil"
      ((string-match "^\\([0-9]+\\)-\\([0-9]+\\)$" str)
       (let ((min-val (string-to-number (match-string 1 str)))
             (max-val (string-to-number (match-string 2 str))))
-        (when (<= min-val max-val)
+        (when (<= 1 min-val max-val)  ;; min 至少为 1
           (cons min-val max-val))))
      ((string-match "^[0-9]+$" str)
       (let ((n (string-to-number str)))
-        (when (> n 0)
+        (when (>= n 1)
           (cons n n))))
      (t nil))))
 ```
@@ -477,15 +527,17 @@ git commit -m "feat: parse RESPAWN interval from Org config"
 ### 任务 4：接入 dispatch 和 attack handler
 
 **依赖：** 任务 2, 任务 3
-**文件集：** `tg-commands.el`, `tg-action.el`, `tg.el`
+**文件集：** `tg-commands.el`, `tg-action.el`, `tg.el`, `test/tg-builtin-test.el`
 **导出/变更接口：** 无
 **消费接口：** `tg-respawn.el::tg-respawn-tick`, `tg-respawn.el::tg-respawn-schedule`
-**复杂度：** quick
+**复杂度：** standard
 
 **文件：**
 - 修改：`tg-commands.el:214`（dispatch 中调用 tick）
+- 修改：`tg-action.el:412-422`（死亡掉落逻辑，装备+no-drop）
 - 修改：`tg-action.el:434`（death 后调用 schedule）
 - 修改：`tg.el:27`（require tg-respawn）
+- 修改：`test/tg-builtin-test.el`（fixture 加 equipment + 新测试）
 
 - [ ] **步骤 1：tg-commands.el 添加 tg-respawn-tick 调用**
 
@@ -500,18 +552,105 @@ git commit -m "feat: parse RESPAWN interval from Org config"
 
 替换原三行。
 
-- [ ] **步骤 2：tg-action.el 添加 tg-respawn-schedule 调用**
+- [ ] **步骤 2a：tg-action.el 装备掉落 + no-drop 检查**
 
-在 `tg-action.el:434`（death-trigger funcall 之后、NPC 反击 else 之前）添加：
-
-在 `(funcall death-trigger creature game))))` 的最后一个 `)` 之后（第 434 行结尾）和 `;; NPC 反击` 注释之间添加一行：
+修改 `tg-action--handler-attack` 的死亡掉落逻辑（当前约第 412-422 行）。原逻辑只遍历 `inventory` 全掉落。改为合并 inventory + equipment 遍历，按 `no-drop` prop 过滤：
 
 ```elisp
-                  ;; 触发刷新调度
-                  (tg-respawn-schedule do-key)
+;; 掉落物品（背包 + 装备，含 no-drop 过滤）
+(let ((all-items (append (tg-creature-inventory creature)
+                         (tg-creature-equipment creature)))
+      (remaining-items nil))
+  (dolist (item-sym all-items)
+    (let ((obj (tg-get-object item-sym)))
+      (if (and obj (memq 'no-drop (tg-object-props obj)))
+          (push item-sym remaining-items)  ;; no-drop：保留
+        ;; 掉落
+        (tg-room-add-object room item-sym)
+        (tg-message "%s掉落了%s。"
+                    (tg-creature-name creature)
+                    (tg-object-name obj)))))
+  ;; 清空并保留 no-drop 物品
+  (setf (tg-creature-inventory creature)
+        (cl-intersection (tg-creature-inventory creature) remaining-items))
+  (setf (tg-creature-equipment creature)
+        (cl-intersection (tg-creature-equipment creature) remaining-items)))
 ```
 
-注意：`do-key` 是 attack handler 中 creature 的 symbol 变量。
+注意：`cl-intersection` 保留 equipment 和 inventory 中属于 `remaining-items` 的物品。
+
+同步修改 `test/tg-builtin-test.el`：
+
+1. 修改 fixture：goblin 加 `:equipment '(wearable-armor)`，新增 no-drop 物件注册：
+
+```elisp
+;; 在 tg-builtin-test-setup 的对象注册区域追加：
+(tg-register-object 'cursed-ring
+  (make-tg-object :symbol 'cursed-ring :name "诅咒之戒" :synonyms '(ring)
+                  :contents nil :supports nil :props '(no-drop wearable)
+                  :state nil :key nil :effects '((attack 3)) :handler nil))
+
+;; goblin 改为：
+(let ((goblin (make-tg-creature
+               :symbol 'goblin :name "哥布林"
+               :attr '((hp 30) (attack 8) (defense 2))
+               :inventory '(sword) :equipment '(wearable-armor)
+               :exp-reward 50
+               :behaviors nil :death-trigger nil
+               :shopkeeper nil :handler nil)))
+  (tg-register-creature 'goblin goblin))
+```
+
+2. 修改现有 `test-builtin-attack-kill`（约第 355 行），补充装备掉落断言：
+
+```elisp
+;; 在 (should (string-match "击败" ...)) 之后追加：
+;; 背包物品应掉落到房间
+(should (member 'sword (tg-room-contents (tg-get-room 'room1))))
+;; 装备物品应掉落到房间
+(should (member 'wearable-armor (tg-room-contents (tg-get-room 'room1))))
+;; goblin 背包和装备应清空
+(should (null (tg-creature-inventory (tg-get-creature 'goblin))))
+(should (null (tg-creature-equipment (tg-get-creature 'goblin))))
+```
+
+3. 新增 no-drop 测试（在 `test-builtin-attack-kill` 之后）：
+
+```elisp
+(ert-deftest test-builtin-attack-kill-no-drop ()
+  "测试 no-drop 物品不掉落，保留在 creature 身上"
+  (tg-builtin-with-env
+   ;; 给 goblin 装备 no-drop 物品
+   (let ((goblin (tg-get-creature 'goblin)))
+     (setf (tg-creature-equipment goblin) '(cursed-ring)))
+   ;; 击杀 goblin
+   (dotimes (_i 5)
+     (when (not (tg-creature-dead-p (tg-get-creature 'goblin)))
+       (tg-action--handler-attack '(:action attack :do-key goblin) tg-game)))
+   (should (tg-creature-dead-p (tg-get-creature 'goblin)))
+   ;; no-drop 物品不应掉落到房间
+   (should (not (member 'cursed-ring (tg-room-contents (tg-get-room 'room1)))))
+   ;; no-drop 物品应保留在 creature equipment 中
+   (should (member 'cursed-ring (tg-creature-equipment (tg-get-creature 'goblin))))))
+```
+
+- [ ] **步骤 2b：tg-action.el 添加 tg-respawn-schedule 调用**
+
+在 then 分支的 `let ((room ...))` 体内、death-trigger 之后追加。将 `tg-action.el:434` 从：
+
+```elisp
+                      (funcall death-trigger creature game))))
+```
+
+改为：
+
+```elisp
+                      (funcall death-trigger creature game)))
+                  ;; 触发刷新调度
+                  (tg-respawn-schedule do-key))
+```
+
+说明：原 `))))` 的 4 个 `)` 分别关闭 funcall/when/let(death-trigger)/let(room)。改为 `)))` 关闭前 3 个，追加 `(tg-respawn-schedule do-key)`，最后 `)` 关闭 `let(room)`。`do-key` 是 attack handler 中 creature 的 symbol 变量。NPC 反击在 else 分支，不受影响。
 
 - [ ] **步骤 3：tg.el 添加 require tg-respawn**
 
@@ -530,7 +669,7 @@ emacs -batch -L . -l test/tg-registry-test.el -l test/tg-game-test.el -l test/tg
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add tg-commands.el tg-action.el tg.el
+git add tg-commands.el tg-action.el tg.el test/tg-builtin-test.el
 git commit -m "feat: wire respawn into dispatch and attack handler"
 ```
 
@@ -574,24 +713,24 @@ git commit -m "feat: wire respawn into dispatch and attack handler"
 ```elisp
 (ert-deftest test-tg-save-respawn-queue ()
   "测试刷新队列的保存和加载"
-  (tg-registry-clear)
-  (setq tg-game (tg-new-game "Test" "Author"))
-  (tg-game-put tg-game :turns 10)
-  (tg-game-put tg-game :respawn-queue '((goblin . 20) (rat . 15)))
-  (let ((file (make-temp-file "tg-test-")))
+  (tg-save-test-setup)
+  (tg-game-put tg-game :respawn-queue '((goblin . 20)))
+  (let* ((save-file (make-temp-file "tg-save-" nil ".el"))
+         (config-dir (tg-save-test--make-config-dir)))
     (unwind-protect
         (progn
-          (tg-save-game file)
+          (tg-save-game save-file)
+          ;; 清空队列验证加载能恢复
           (tg-game-put tg-game :respawn-queue nil)
           (should (null (tg-game-get tg-game :respawn-queue)))
-          (tg-load-game file (file-name-directory file))
+          (tg-load-game save-file config-dir)
           (should (equal (tg-game-get tg-game :respawn-queue)
-                         '((goblin . 20) (rat . 15)))))
-      (delete-file file)))
-  (tg-registry-clear))
+                         '((goblin . 20)))))
+      (delete-file save-file)
+      (delete-directory config-dir t))))
 ```
 
-注意：此测试依赖 test fixture 有 game.org。如果 tg-save-test.el 中已有类似模式的测试，参照其 fixture 配置。若测试 fixture 不便于 load，可改为单元测试直接调用 collect/restore 函数。
+此测试使用现有的 `tg-save-test-setup` + `tg-save-test--make-config-dir` 模式，确保完整的 save→config-load→restore 周期。
 
 - [ ] **步骤 4：运行 save 测试**
 
@@ -638,8 +777,10 @@ emacs -batch -L . --eval '(progn (require (quote tg)) (tg-init "sample/game.org"
 1. 在文件头 `#+PLAYER: hero` 之后添加：`#+RESPAWN_DEFAULT: 10-20`
 2. 为 `rat` creature（第 274 行附近）添加 `:RESPAWN: 5-10`
 3. 为 `goblin` creature 添加 `:RESPAWN: 8-15`
-4. 为 `skeleton-warrior` creature 添加 `:RESPAWN: 15-25`
+4. 为 `skeleton-minion` creature 添加 `:RESPAWN: 15-25`
 5. skeleton-king 和 shopkeeper 不加 RESPAWN（boss 不刷新，商店不刷新）
+6. 新增 object `cursed-sword`（暗黑之剑），`:PROPS: no-drop`，`:EFFECTS: (attack 10)`
+7. skeleton-king 的 `:EQUIPMENT: cursed-sword`（演示 no-drop 机制）
 
 - [ ] **步骤 4：更新 docs/manual.org**
 

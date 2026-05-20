@@ -87,16 +87,17 @@ initial-equipment    ;; 初始装备（解析时保存的 equipment 副本）
 
 在 `tg-action--handler-attack` 的死亡处理中（现有逻辑之后），调用 `tg-respawn-schedule`：
 
-1. 检查 creature 的 `respawn-interval` 是否非 nil
-2. 检查 creature 是否为 shopkeeper（shopkeeper 不刷新）
-3. 检查队列中是否已存在该 creature-symbol（防重复），已存在则跳过
-4. 取 `[min, max]` 区间内随机整数 `interval`
-5. 计算 `respawn-turn = current-turn + interval`
-6. push `(creature-symbol . respawn-turn)` 到 `:respawn-queue`，并通过 `tg-game-put` 写回 game
+1. 检查 creature 是否确实死亡（通过 `tg-creature-dead-p` 守卫，防止误调度活 creature）
+2. 检查 creature 的 `respawn-interval` 是否非 nil
+3. 检查 creature 是否为 shopkeeper（shopkeeper 不刷新）
+4. 检查队列中是否已存在该 creature-symbol（防重复），已存在则跳过
+5. 取 `[min, max]` 区间内随机整数 `interval`
+6. 计算 `respawn-turn = current-turn + interval`
+7. append `(creature-symbol . respawn-turn)` 到 `:respawn-queue` 末尾（FIFO 顺序，先死后活），并通过 `tg-game-put` 写回 game
 
 **生命周期：** creature 死亡 → 进队列 → 回合到达 → 刷新恢复 → 从队列移除。之后 creature 可再次死亡、再次进队列，形成完整的"死-活-死"循环。
 
-**关于物品掉落与恢复：** 生物死亡时，背包物品按现有逻辑全部掉落在地、背包清空。刷新时从 `initial-inventory` 恢复背包。这意味着同一件物品会同时在地上和生物背包里——这是经典 MUD 刷怪刷装备的玩法，属于有意设计。玩家可以反复击杀同一种怪获取多份战利品。
+**关于物品掉落与恢复：** 生物死亡时，背包和装备栏物品掉落在地、清空。可通过 object 的 `no-drop` prop 标记某物品不掉落（该物品保留在生物身上不处理）。刷新时从 `initial-inventory`/`initial-equipment` 恢复。这意味着同一件物品会同时在地上和生物身上——这是经典 MUD 刷怪刷装备的玩法，属于有意设计。玩家可以反复击杀同一种怪获取多份战利品。
 
 ### 3.2 回合检查
 
@@ -128,9 +129,11 @@ tg-respawn-tick:
 
 `tg-respawn-restore(creature-symbol)`：
 
-1. 从 registry 获取 creature
+1. 从 registry 获取 creature，若为 nil 或非 creature struct（`tg-creature-p` 检查）则静默跳过
 2. 恢复 `attr` 为 `initial-attr` 的 `copy-tree`
 3. 恢复 `inventory` 为 `initial-inventory` 的 `copy-sequence`
+
+   > 代码注释提醒：`copy-sequence` 对 symbol list 已足够；若装备变为 mutable struct 需升级为 `copy-tree`。
 4. 恢复 `equipment` 为 `initial-equipment` 的 `copy-sequence`
 5. 若玩家与 creature 在同一房间，输出刷新通知：
    - 格式：`"(creature-name) 从地上爬了起来！"` 或类似文字
@@ -158,8 +161,8 @@ tg-respawn-tick:
 ```
 
 解析规则：
-- 匹配 `^\([0-9]+\)-\([0-9]+\)$` → `(min . max)`，要求 `min <= max`
-- 单个数字 `N` → `(N . N)`（固定间隔的简写）
+- 匹配 `^\([0-9]+\)-\([0-9]+\)$` → 若 `1 ≤ min ≤ max` 则返回 `(min . max)`，否则 nil。min 至少为 1，0 回合刷新无意义
+- 单个数字 `"N"` → 若 `N ≥ 1` 则返回 `(N . N)`（固定间隔的简写），`"0"` 返回 nil
 - nil 或空字符串 → nil
 
 ### 4.2 tg-config--parse-creature-section 修改
@@ -258,6 +261,12 @@ tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 
 
 若 creature 刷新时玩家不在同一房间，不输出通知。玩家下次进入该房间时，新刷新的 creature 自然出现在房间的 creature 列表中。
 
+### 7.6 no-drop prop 与掉落
+
+object 可设置 `:PROPS: no-drop` 标记物品不可掉落。creature 死亡时，背包和装备栏中带有 `no-drop` prop 的物品不落地、不清除，保留在 creature 身上。这对 boss 专属装备等场景有用——boss 死后武器不落地，避免玩家获得。
+
+`no-drop` 通过 `(memq 'no-drop (tg-object-props obj))` 检查。该 prop 同时影响 inventory 和 equipment 掉落。
+
 ---
 
 ## 8. 文件变更汇总
@@ -268,7 +277,7 @@ tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 
 | `tg-creature.el` | 修改 | struct 加 4 字段 |
 | `tg-config.el` | 修改 | 解析 RESPAWN + RESPAWN_DEFAULT + 按需保存初始状态 + 开头重置全局默认 |
 | `tg-commands.el` | 修改 | dispatch 中非被动块内调用 tg-respawn-tick |
-| `tg-action.el` | 修改 | attack 死亡时调用 tg-respawn-schedule |
+| `tg-action.el` | 修改 | attack 死亡时掉落 equipment + no-drop 过滤 + 调用 tg-respawn-schedule |
 | `tg-save.el` | 修改 | 保存/加载 :respawn-queue |
 | `tg.el` | 修改 | require tg-respawn（在 tg-config 之前） |
 | `sample/game.org` | 修改 | 添加 #+RESPAWN_DEFAULT + 部分 creature 加 RESPAWN |
@@ -293,3 +302,6 @@ tg-respawn-default-interval               ;; 默认刷新区间 (min . max) 或 
 11. **防重复调度测试**：同一 creature 不会重复加入刷新队列
 12. **save/load 测试**：刷新队列保存后加载恢复正确；读档后 creature 按原定回合刷新
 13. **全局默认重置测试**：加载无 RESPAWN_DEFAULT 的游戏后，前次默认值不残留
+14. **equipment 掉落测试**：生物死亡时 equipment 掉落在地、equipment 清空
+15. **no-drop 测试**：带 `no-drop` prop 的物品不掉落也不清除
+16. **tg-creature-p 守卫测试**：对非 creature struct 调用 restore 静默跳过

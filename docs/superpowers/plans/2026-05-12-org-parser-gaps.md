@@ -399,7 +399,7 @@ git commit -m "feat: parse Level section from Org config"
 - [ ] **步骤 6：运行测试验证通过**
 
 ```bash
-emacs -batch -L . -l test/tg-quest-test.el -l test/tg-action-test.el -l test/tg-registry-test.el -f ert-run-tests-batch-and-exit 2>&1 | tail -3
+emacs -batch -L . -l tg-commands.el -l test/tg-quest-test.el -l test/tg-action-test.el -l test/tg-registry-test.el -f ert-run-tests-batch-and-exit 2>&1 | tail -3
 ```
 
 - [ ] **步骤 7：更新 `sample/game.org`**

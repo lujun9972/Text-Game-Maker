@@ -605,7 +605,7 @@ emacs --no-init-file -nw --directory "$PROJECT_DIR" \
 
 ## 6. README.md 大纲
 
-精简概览，约 80-100 行，7 个章节：
+精简概览，约 80-100 行，8 个章节：
 
 1. **项目名称 + 一句话简介**
 2. **特性** — 8-10 条要点（Org 配置、cl-defstruct、27 内置命令、装备动态加成、NPC 行为、对话状态机、商店、任务、存档、可扩展动词）
@@ -646,7 +646,7 @@ emacs --no-init-file -nw --directory "$PROJECT_DIR" \
 
 在 `tg-action.el` 中补全 `explore`/`talk` 任务追踪：
 
-**tg-action--handler-go**（`tg-action--handler-go` 移动成功后，约第 83 行 `t` 之前）：
+**tg-action--handler-go**（`tg-action--handler-go` 移动成功后，`when target-room` 块内，`tg-message` 之前）：
 ```elisp
 (tg-track-quest 'explore target-sym)
 ```
